@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: internship_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-internship_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-internship_pass_secure}
+      POSTGRES_DB: ${POSTGRES_DB:-internship_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-internship_user} -d ${POSTGRES_DB:-internship_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internship_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: internship_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-internship_user}:${POSTGRES_PASSWORD:-internship_pass_secure}@postgres:5432/${POSTGRES_DB:-internship_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_university_internship_2026}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-super_refresh_jwt_key_university_internship_2026}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      UPLOAD_DESTINATION: ./uploads/documents
+      MAX_FILE_SIZE_MB: 10
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - internship_network
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+networks:
+  internship_network:
+    driver: bridge

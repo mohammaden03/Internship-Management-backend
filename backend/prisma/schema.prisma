@@ -1,0 +1,217 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  PROFESSOR
+  STUDENT
+}
+
+enum InternshipStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  INTRODUCTION_LETTER
+  CONTRACT
+  START_FORM
+  FINAL_REPORT
+  OTHER
+}
+
+model User {
+  id           String        @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String        @unique
+  password     String
+  phoneNumber  String?
+  role         Role          @default(STUDENT)
+  isActive     Boolean       @default(true)
+  refreshToken String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  student      Student?
+  professor    Professor?
+  notifications Notification[]
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+model Student {
+  id            String              @id @default(uuid())
+  studentNumber String              @unique
+  faculty       String
+  major         String
+  degreeLevel   String
+  userId        String              @unique
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  requests      InternshipRequest[]
+  internships   Internship[]
+
+  @@map("students")
+}
+
+model Professor {
+  id           String        @id @default(uuid())
+  department   String
+  academicRank String
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  internships  Internship[]
+
+  @@map("professors")
+}
+
+model Company {
+  id              String              @id @default(uuid())
+  name            String
+  industry        String
+  city            String
+  address         String
+  phone           String
+  supervisorName  String
+  supervisorPhone String
+  createdAt       DateTime            @default(now())
+
+  requests        InternshipRequest[]
+  internships     Internship[]
+
+  @@map("companies")
+}
+
+model InternshipRequest {
+  id          String         @id @default(uuid())
+  studentId   String
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  totalHours  Int            @default(240)
+  status      RequestStatus  @default(PENDING)
+  createdAt   DateTime       @default(now())
+
+  internship  Internship?
+
+  @@map("internship_requests")
+}
+
+model Internship {
+  id                 String           @id @default(uuid())
+  studentId          String
+  student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  professorId        String
+  professor          Professor        @relation(fields: [professorId], references: [id], onDelete: Restrict)
+  companyId          String
+  company            Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  requestId          String           @unique
+  request            InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  startDate          DateTime
+  endDate            DateTime
+  progressPercentage Int              @default(0)
+  status             InternshipStatus @default(ACTIVE)
+
+  weeklyReports      WeeklyReport[]
+  documents          Document[]
+  evaluation         Evaluation?
+
+  @@map("internships")
+}
+
+model WeeklyReport {
+  id               String       @id @default(uuid())
+  internshipId     String
+  internship       Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  weekNumber       Int
+  startDate        DateTime
+  endDate          DateTime
+  activities       String
+  skillsLearned    String
+  challenges       String?
+  description      String
+  status           ReportStatus @default(DRAFT)
+  professorComment String?
+  createdAt        DateTime     @default(now())
+
+  @@unique([internshipId, weekNumber])
+  @@map("weekly_reports")
+}
+
+model Document {
+  id           String       @id @default(uuid())
+  internshipId String
+  internship   Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  fileName     String
+  filePath     String
+  documentType DocumentType
+  uploadedAt   DateTime     @default(now())
+
+  @@map("documents")
+}
+
+model Evaluation {
+  id              String     @id @default(uuid())
+  internshipId    String     @unique
+  internship      Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  technicalSkill  Float
+  responsibility  Float
+  discipline      Float
+  teamwork        Float
+  attendance      Float
+  description     String
+  finalScore      Float
+  createdAt       DateTime   @default(now())
+
+  @@map("evaluations")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
