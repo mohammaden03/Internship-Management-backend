@@ -24,6 +24,11 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: '0020000001', description: 'کد ملی ده‌رقمی معتبر کاربر' })
+  @IsString()
+  @IsNotEmpty()
+  nationalCode: string;
+
   @ApiProperty({ example: 'Password123!' })
   @IsString()
   @MinLength(6)

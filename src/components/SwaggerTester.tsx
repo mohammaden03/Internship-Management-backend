@@ -50,24 +50,31 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
       tag: 'Auth',
       method: 'POST',
       path: '/api/auth/login',
-      summary: 'ورود به سامانه با ایمیل و رمز عبور (تولید JWT Access Token و Refresh Token)',
-      description: 'اعتبارسنجی کاربر، مقایسه هش bcrypt و صدور توکن‌های احراز هویت.',
+      summary: 'ورود به سامانه با شناسه (کد ملی یا شماره دانشجویی) و رمز عبور',
+      description:
+        'دانشجو: ورود با کد ملی یا شماره دانشجویی و رمز عبور | استاد و مدیر: ورود با کد ملی و رمز عبور. صدور Access Token و Refresh Token.',
       defaultBody: {
-        email: activeRole === 'ADMIN' ? 'admin@university.ac.ir' : activeRole === 'PROFESSOR' ? 'dr.sadeghi@university.ac.ir' : 'm.rezaei@student.ac.ir',
+        identifier:
+          activeRole === 'ADMIN'
+            ? '0012345678' // کد ملی مدیر سیستم
+            : activeRole === 'PROFESSOR'
+              ? '0010000001' // کد ملی استاد ناظر (دکتر صادقی)
+              : '400123456', // شماره دانشجویی محمد رضایی (یا کد ملی: 0020000001)
         password: 'Password123!',
       },
       responseExample: {
         statusCode: 200,
         message: 'ورود به سامانه با موفقیت انجام شد',
         data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMSIsImVtYWlsIjoiYWRtaW5AdW5pdmVyc2l0eS5hYy5pciIsInJvbGUiOiJBRE1JTiJ9...',
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMSIsIm5hdGlvbmFsQ29kZSI6IjAwMTIzNDU2NzgiLCJyb2xlIjoiQURNSU4ifQ...',
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh_token_payload...',
-          expiresIn: 3600,
+          tokenType: 'Bearer',
           user: {
             id: 'usr-1',
-            email: 'admin@university.ac.ir',
-            firstName: 'علی',
-            lastName: 'احمدی',
+            nationalCode: activeRole === 'ADMIN' ? '0012345678' : activeRole === 'PROFESSOR' ? '0010000001' : '0020000001',
+            studentNumber: activeRole === 'STUDENT' ? '400123456' : undefined,
+            firstName: activeRole === 'ADMIN' ? 'علی' : activeRole === 'PROFESSOR' ? 'حمیدرضا' : 'محمد',
+            lastName: activeRole === 'ADMIN' ? 'احمدی' : activeRole === 'PROFESSOR' ? 'صادقی' : 'رضایی',
             role: activeRole,
           },
         },
@@ -78,23 +85,30 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
       tag: 'Auth',
       method: 'POST',
       path: '/api/auth/register',
-      summary: 'ثبت‌نام دانشجو یا کاربر جدید',
-      description: 'ایجاد حساب کاربری با هش امنیتی پسورد و صدور جفت توکن.',
+      summary: 'ثبت‌نام دانشجو یا کاربر جدید با کد ملی و شماره دانشجویی',
+      description: 'ایجاد حساب کاربری، اعتبارسنجی یکتایی کد ملی و ایمیل، هش امنیتی رمز عبور و ایجاد پروفایل تخصصی.',
       defaultBody: {
-        email: 'new.student@student.ac.ir',
-        password: 'SecurePassword123!',
+        nationalCode: '0029988776',
+        studentNumber: '402123456',
         firstName: 'آرمین',
         lastName: 'کامرانی',
+        email: 'a.kamrani@student.ac.ir',
+        password: 'Password123!',
         phoneNumber: '09129876543',
         role: 'STUDENT',
+        major: 'مهندسی کامپیوتر',
+        faculty: 'دانشکده مهندسی',
       },
       responseExample: {
         statusCode: 201,
         message: 'کاربر با موفقیت ثبت شد',
         data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           user: {
             id: 'usr-new-88',
-            email: 'new.student@student.ac.ir',
+            nationalCode: '0029988776',
+            studentNumber: '402123456',
             firstName: 'آرمین',
             lastName: 'کامرانی',
             role: 'STUDENT',

@@ -14,6 +14,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
+  nationalCode: string;
   phoneNumber?: string;
   role: Role;
   isActive: boolean;

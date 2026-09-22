@@ -17,6 +17,11 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: '0012345678', description: 'کد ملی ده‌رقمی' })
+  @IsString()
+  @IsNotEmpty()
+  nationalCode: string;
+
   @ApiProperty({ example: 'Password123!' })
   @IsString()
   @MinLength(6)

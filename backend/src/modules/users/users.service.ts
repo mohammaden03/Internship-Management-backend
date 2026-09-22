@@ -14,11 +14,19 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: dto.email.toLowerCase() },
+          { nationalCode: dto.nationalCode },
+        ],
+      },
     });
     if (existing) {
-      throw new ConflictException('User with this email already exists');
+      if (existing.email.toLowerCase() === dto.email.toLowerCase()) {
+        throw new ConflictException('کاربری با این ایمیل قبلاً ثبت شده است');
+      }
+      throw new ConflictException('کاربری با این کد ملی قبلاً ثبت شده است');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -27,6 +35,7 @@ export class UsersService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email.toLowerCase(),
+        nationalCode: dto.nationalCode,
         password: hashedPassword,
         phoneNumber: dto.phoneNumber,
         role: dto.role,
@@ -36,6 +45,7 @@ export class UsersService {
         firstName: true,
         lastName: true,
         email: true,
+        nationalCode: true,
         phoneNumber: true,
         role: true,
         isActive: true,
@@ -56,6 +66,7 @@ export class UsersService {
         { firstName: { contains: query.search, mode: 'insensitive' } },
         { lastName: { contains: query.search, mode: 'insensitive' } },
         { email: { contains: query.search, mode: 'insensitive' } },
+        { nationalCode: { contains: query.search, mode: 'insensitive' } },
       ];
     }
     if (query.status) {
@@ -73,6 +84,7 @@ export class UsersService {
           firstName: true,
           lastName: true,
           email: true,
+          nationalCode: true,
           phoneNumber: true,
           role: true,
           isActive: true,
@@ -136,6 +148,7 @@ export class UsersService {
         firstName: true,
         lastName: true,
         email: true,
+        nationalCode: true,
         phoneNumber: true,
         role: true,
         isActive: true,

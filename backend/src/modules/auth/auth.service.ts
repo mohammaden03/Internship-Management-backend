@@ -24,11 +24,19 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: dto.email.toLowerCase() },
+          { nationalCode: dto.nationalCode },
+        ],
+      },
     });
     if (existing) {
-      throw new ConflictException('Email is already registered in the system');
+      if (existing.email.toLowerCase() === dto.email.toLowerCase()) {
+        throw new ConflictException('ایمیل وارد شده قبلاً در سامانه ثبت شده است.');
+      }
+      throw new ConflictException('کد ملی وارد شده قبلاً در سامانه ثبت شده است.');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -39,6 +47,7 @@ export class AuthService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           email: dto.email.toLowerCase(),
+          nationalCode: dto.nationalCode,
           password: hashedPassword,
           phoneNumber: dto.phoneNumber,
           role: dto.role,
@@ -73,7 +82,7 @@ export class AuthService {
 
     await this.activityLogsService.log({
       userId: user.id,
-      action: `ثبت نام کاربر جدید در سامانه با نقش ${user.role}`,
+      action: `ثبت نام کاربر جدید در سامانه (${user.firstName} ${user.lastName} - کد ملی: ${user.nationalCode}) با نقش ${user.role}`,
     });
 
     await this.notificationsService.create({
@@ -86,31 +95,98 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
+    const rawIdentifier = (
+      dto.identifier ||
+      dto.nationalCode ||
+      dto.studentNumber ||
+      dto.email ||
+      ''
+    ).trim();
+
+    if (!rawIdentifier) {
+      throw new BadRequestException('شناسه ورود (کد ملی یا شماره دانشجویی) الزامی است.');
+    }
+
+    if (!dto.password) {
+      throw new BadRequestException('رمز عبور الزامی است.');
+    }
+
+    // 1. First, check if input matches user's nationalCode
+    let user = await this.prisma.user.findUnique({
+      where: { nationalCode: rawIdentifier },
       include: {
         student: true,
         professor: true,
       },
     });
 
+    // 2. If not found by nationalCode, check if student matches by studentNumber
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password credentials');
+      const student = await this.prisma.student.findUnique({
+        where: { studentNumber: rawIdentifier },
+        include: {
+          user: {
+            include: {
+              student: true,
+              professor: true,
+            },
+          },
+        },
+      });
+
+      if (student?.user) {
+        user = student.user;
+      }
+    }
+
+    // 3. Fallback: check by email
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { email: rawIdentifier.toLowerCase() },
+        include: {
+          student: true,
+          professor: true,
+        },
+      });
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('اطلاعات ورود نامعتبر است. کاربری با این کد ملی یا شماره دانشجویی یافت نشد.');
+    }
+
+    // Enforce role-specific authentication rules:
+    // Professor & Admin: login MUST be with nationalCode (or official university email)
+    if (user.role === Role.PROFESSOR || user.role === Role.ADMIN) {
+      const matchedWithNationalCode = user.nationalCode === rawIdentifier;
+      const matchedWithEmail = user.email.toLowerCase() === rawIdentifier.toLowerCase();
+      if (!matchedWithNationalCode && !matchedWithEmail) {
+        throw new UnauthorizedException('ورود استاد ناظر و مدیر سیستم منحصراً با کد ملی و رمز عبور امکان‌پذیر است.');
+      }
+    }
+
+    // Student: login is allowed with nationalCode OR studentNumber
+    if (user.role === Role.STUDENT) {
+      const matchedWithNationalCode = user.nationalCode === rawIdentifier;
+      const matchedWithStudentNumber = user.student?.studentNumber === rawIdentifier;
+      const matchedWithEmail = user.email.toLowerCase() === rawIdentifier.toLowerCase();
+      if (!matchedWithNationalCode && !matchedWithStudentNumber && !matchedWithEmail) {
+        throw new UnauthorizedException('ورود دانشجو منحصراً با کد ملی یا شماره دانشجویی و رمز عبور مجاز می‌باشد.');
+      }
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password credentials');
+      throw new UnauthorizedException('رمز عبور وارد شده نادرست است.');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User account has been deactivated by an administrator');
+      throw new UnauthorizedException('حساب کاربری شما توسط مدیر سامانه غیرفعال شده است.');
     }
 
     // Track activity log
     await this.activityLogsService.log({
       userId: user.id,
-      action: `ورود موفقیت‌آمیز کاربر (${user.email}) به سامانه با نقش ${user.role}`,
+      action: `ورود موفقیت‌آمیز (${user.firstName} ${user.lastName} - کد ملی: ${user.nationalCode}) به سامانه با نقش ${user.role}`,
     });
 
     return this.generateTokens(user);
@@ -159,6 +235,8 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
+      nationalCode: user.nationalCode,
+      studentNumber: user.student?.studentNumber,
       role: user.role,
       studentId: user.student?.id,
       professorId: user.professor?.id,
@@ -189,6 +267,8 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        nationalCode: user.nationalCode,
+        studentNumber: user.student?.studentNumber,
         role: user.role,
         studentId: user.student?.id,
         professorId: user.professor?.id,

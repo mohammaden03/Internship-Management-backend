@@ -46,6 +46,7 @@ model User {
   firstName    String
   lastName     String
   email        String        @unique
+  nationalCode String        @unique
   password     String
   phoneNumber  String?
   role         Role          @default(STUDENT)

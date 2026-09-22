@@ -27,13 +27,14 @@ async function main() {
       firstName: 'علی',
       lastName: 'احمدی',
       email: 'admin@university.ac.ir',
+      nationalCode: '0012345678',
       password: defaultPassword,
       phoneNumber: '09121112233',
       role: Role.ADMIN,
       isActive: true,
       activityLogs: {
         create: [
-          { action: 'ورود به سامانه به عنوان مدیر ارشد سیستم' },
+          { action: 'ورود به سامانه به عنوان مدیر ارشد سیستم با کد ملی 0012345678' },
           { action: 'راه‌اندازی اولیه سامانه و بررسی تنظیمات دوره کارآموزی' }
         ]
       }
@@ -46,6 +47,7 @@ async function main() {
       first: 'حمیدرضا',
       last: 'صادقی',
       email: 'dr.sadeghi@university.ac.ir',
+      nationalCode: '0010000001',
       phone: '09121000001',
       dept: 'مهندسی کامپیوتر و فناوری اطلاعات',
       rank: 'استاد تمام'
@@ -54,6 +56,7 @@ async function main() {
       first: 'زهرا',
       last: 'کریمی',
       email: 'dr.karimi@university.ac.ir',
+      nationalCode: '0010000002',
       phone: '09121000002',
       dept: 'مهندسی برق و سیستم‌های مخابراتی',
       rank: 'دانشیار'
@@ -62,6 +65,7 @@ async function main() {
       first: 'محسن',
       last: 'موسوی',
       email: 'dr.mousavi@university.ac.ir',
+      nationalCode: '0010000003',
       phone: '09121000003',
       dept: 'مهندسی صنایع و مدیریت سیستم',
       rank: 'استادیار'
@@ -70,6 +74,7 @@ async function main() {
       first: 'مریم',
       last: 'ابراهیمی',
       email: 'dr.ebrahimi@university.ac.ir',
+      nationalCode: '0010000004',
       phone: '09121000004',
       dept: 'مهندسی کامپیوتر و هوش مصنوعی',
       rank: 'دانشیار'
@@ -78,6 +83,7 @@ async function main() {
       first: 'امیرحسین',
       last: 'حسینی',
       email: 'dr.hosseini@university.ac.ir',
+      nationalCode: '0010000005',
       phone: '09121000005',
       dept: 'مهندسی مکانیک و طراحی کاربردی',
       rank: 'استاد تمام'
@@ -91,6 +97,7 @@ async function main() {
         firstName: p.first,
         lastName: p.last,
         email: p.email,
+        nationalCode: p.nationalCode,
         password: defaultPassword,
         phoneNumber: p.phone,
         role: Role.PROFESSOR,
@@ -102,7 +109,7 @@ async function main() {
           }
         },
         activityLogs: {
-          create: [{ action: `ورود استاد ${p.first} ${p.last} به سامانه نظارت کارآموزی` }]
+          create: [{ action: `ورود استاد ${p.first} ${p.last} (کد ملی: ${p.nationalCode}) به سامانه نظارت کارآموزی` }]
         }
       },
       include: { professor: true }
@@ -112,16 +119,16 @@ async function main() {
 
   // 3. Create 10 Students
   const studentData = [
-    { first: 'محمد', last: 'رضایی', email: 'm.rezaei@student.ac.ir', phone: '09351000001', stNo: '99123401', faculty: 'دانشکده مهندسی کامپیوتر', major: 'مهندسی نرم‌افزار', degree: 'کارشناسی' },
-    { first: 'سارا', last: 'علوی', email: 's.alavi@student.ac.ir', phone: '09351000002', stNo: '99123402', faculty: 'دانشکده مهندسی کامپیوتر', major: 'فناوری اطلاعات و شبکه', degree: 'کارشناسی' },
-    { first: 'پویا', last: 'فرهادی', email: 'p.farhadi@student.ac.ir', phone: '09351000003', stNo: '99123403', faculty: 'دانشکده مهندسی برق', major: 'الکترونیک دیجیتال', degree: 'کارشناسی' },
-    { first: 'نیلوفر', last: 'کاظمی', email: 'n.kazemi@student.ac.ir', phone: '09351000004', stNo: '99123404', faculty: 'دانشکده صنایع', major: 'مدیریت زنجیره تأمین', degree: 'کارشناسی' },
-    { first: 'امید', last: 'باقری', email: 'o.bagheri@student.ac.ir', phone: '09351000005', stNo: '99123405', faculty: 'دانشکده مهندسی کامپیوتر', major: 'هوش مصنوعی و داده', degree: 'کارشناسی ارشد' },
-    { first: 'فاطمه', last: 'نجفی', email: 'f.najafi@student.ac.ir', phone: '09351000006', stNo: '99123406', faculty: 'دانشکده مهندسی مکانیک', major: 'مکانیک جامدات و ساخت', degree: 'کارشناسی' },
-    { first: 'آرش', last: 'رستم‌زاده', email: 'a.rostam@student.ac.ir', phone: '09351000007', stNo: '99123407', faculty: 'دانشکده مهندسی کامپیوتر', major: 'امنیت اطلاعات', degree: 'کارشناسی ارشد' },
-    { first: 'مهسا', last: 'حیدری', email: 'm.heidari@student.ac.ir', phone: '09351000008', stNo: '99123408', faculty: 'دانشکده مهندسی صنایع', major: 'بهینه‌سازی سیستم‌ها', degree: 'کارشناسی' },
-    { first: 'سینا', last: 'مرادی', email: 's.moradi@student.ac.ir', phone: '09351000009', stNo: '99123409', faculty: 'دانشکده مهندسی کامپیوتر', major: 'نرم‌افزار و رایانش ابری', degree: 'کارشناسی' },
-    { first: 'یلدا', last: 'پیروزیان', email: 'y.pirouz@student.ac.ir', phone: '09351000010', stNo: '99123410', faculty: 'دانشکده برق', major: 'کنترل و ابزار دقیق', degree: 'کارشناسی' }
+    { first: 'محمد', last: 'رضایی', email: 'm.rezaei@student.ac.ir', nationalCode: '0020000001', phone: '09351000001', stNo: '99123401', faculty: 'دانشکده مهندسی کامپیوتر', major: 'مهندسی نرم‌افزار', degree: 'کارشناسی' },
+    { first: 'سارا', last: 'علوی', email: 's.alavi@student.ac.ir', nationalCode: '0020000002', phone: '09351000002', stNo: '99123402', faculty: 'دانشکده مهندسی کامپیوتر', major: 'فناوری اطلاعات و شبکه', degree: 'کارشناسی' },
+    { first: 'پویا', last: 'فرهادی', email: 'p.farhadi@student.ac.ir', nationalCode: '0020000003', phone: '09351000003', stNo: '99123403', faculty: 'دانشکده مهندسی برق', major: 'الکترونیک دیجیتال', degree: 'کارشناسی' },
+    { first: 'نیلوفر', last: 'کاظمی', email: 'n.kazemi@student.ac.ir', nationalCode: '0020000004', phone: '09351000004', stNo: '99123404', faculty: 'دانشکده صنایع', major: 'مدیریت زنجیره تأمین', degree: 'کارشناسی' },
+    { first: 'امید', last: 'باقری', email: 'o.bagheri@student.ac.ir', nationalCode: '0020000005', phone: '09351000005', stNo: '99123405', faculty: 'دانشکده مهندسی کامپیوتر', major: 'هوش مصنوعی و داده', degree: 'کارشناسی ارشد' },
+    { first: 'فاطمه', last: 'نجفی', email: 'f.najafi@student.ac.ir', nationalCode: '0020000006', phone: '09351000006', stNo: '99123406', faculty: 'دانشکده مهندسی مکانیک', major: 'مکانیک جامدات و ساخت', degree: 'کارشناسی' },
+    { first: 'آرش', last: 'رستم‌زاده', email: 'a.rostam@student.ac.ir', nationalCode: '0020000007', phone: '09351000007', stNo: '99123407', faculty: 'دانشکده مهندسی کامپیوتر', major: 'امنیت اطلاعات', degree: 'کارشناسی ارشد' },
+    { first: 'مهسا', last: 'حیدری', email: 'm.heidari@student.ac.ir', nationalCode: '0020000008', phone: '09351000008', stNo: '99123408', faculty: 'دانشکده مهندسی صنایع', major: 'بهینه‌سازی سیستم‌ها', degree: 'کارشناسی' },
+    { first: 'سینا', last: 'مرادی', email: 's.moradi@student.ac.ir', nationalCode: '0020000009', phone: '09351000009', stNo: '99123409', faculty: 'دانشکده مهندسی کامپیوتر', major: 'نرم‌افزار و رایانش ابری', degree: 'کارشناسی' },
+    { first: 'یلدا', last: 'پیروزیان', email: 'y.pirouz@student.ac.ir', nationalCode: '0020000010', phone: '09351000010', stNo: '99123410', faculty: 'دانشکده برق', major: 'کنترل و ابزار دقیق', degree: 'کارشناسی' }
   ];
 
   const createdStudents = [];
@@ -131,6 +138,7 @@ async function main() {
         firstName: s.first,
         lastName: s.last,
         email: s.email,
+        nationalCode: s.nationalCode,
         password: defaultPassword,
         phoneNumber: s.phone,
         role: Role.STUDENT,
@@ -144,7 +152,7 @@ async function main() {
           }
         },
         activityLogs: {
-          create: [{ action: `ورود دانشجو ${s.first} ${s.last} به پرتال دانشجویی کارآموزی` }]
+          create: [{ action: `ورود دانشجو ${s.first} ${s.last} (شماره دانشجویی: ${s.stNo} - کد ملی: ${s.nationalCode}) به پرتال دانشجویی کارآموزی` }]
         }
       },
       include: { student: true }
