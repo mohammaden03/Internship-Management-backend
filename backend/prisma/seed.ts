@@ -102,19 +102,20 @@ async function main() {
         phoneNumber: p.phone,
         role: Role.PROFESSOR,
         isActive: true,
-        professor: {
-          create: {
-            department: p.dept,
-            academicRank: p.rank
-          }
-        },
         activityLogs: {
           create: [{ action: `ورود استاد ${p.first} ${p.last} (کد ملی: ${p.nationalCode}) به سامانه نظارت کارآموزی` }]
         }
-      },
-      include: { professor: true }
+      }
     });
-    createdProfessors.push(user.professor!);
+
+    const prof = await prisma.professor.create({
+      data: {
+        userId: user.id,
+        department: p.dept,
+        academicRank: p.rank
+      }
+    });
+    createdProfessors.push(prof);
   }
 
   // 3. Create 10 Students
@@ -143,21 +144,22 @@ async function main() {
         phoneNumber: s.phone,
         role: Role.STUDENT,
         isActive: true,
-        student: {
-          create: {
-            studentNumber: s.stNo,
-            faculty: s.faculty,
-            major: s.major,
-            degreeLevel: s.degree
-          }
-        },
         activityLogs: {
           create: [{ action: `ورود دانشجو ${s.first} ${s.last} (شماره دانشجویی: ${s.stNo} - کد ملی: ${s.nationalCode}) به پرتال دانشجویی کارآموزی` }]
         }
-      },
-      include: { student: true }
+      }
     });
-    createdStudents.push(user.student!);
+
+    const st = await prisma.student.create({
+      data: {
+        userId: user.id,
+        studentNumber: s.stNo,
+        faculty: s.faculty,
+        major: s.major,
+        degreeLevel: s.degree
+      }
+    });
+    createdStudents.push(st);
   }
 
   // 4. Create 10 Companies
