@@ -38,7 +38,7 @@ async function main() {
           { action: 'راه‌اندازی اولیه سامانه و بررسی تنظیمات دوره کارآموزی' }
         ]
       }
-    }
+    } as any
   });
 
   // 2. Create 5 Professors
@@ -105,7 +105,7 @@ async function main() {
         activityLogs: {
           create: [{ action: `ورود استاد ${p.first} ${p.last} (کد ملی: ${p.nationalCode}) به سامانه نظارت کارآموزی` }]
         }
-      }
+      } as any
     });
 
     const prof = await prisma.professor.create({
@@ -147,7 +147,7 @@ async function main() {
         activityLogs: {
           create: [{ action: `ورود دانشجو ${s.first} ${s.last} (شماره دانشجویی: ${s.stNo} - کد ملی: ${s.nationalCode}) به پرتال دانشجویی کارآموزی` }]
         }
-      }
+      } as any
     });
 
     const st = await prisma.student.create({
