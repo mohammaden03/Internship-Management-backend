@@ -56,7 +56,7 @@ export default function App() {
   const triggerNotification = (title: string, message: string) => {
     const newNotif: Notification = {
       id: `notif-${Date.now()}`,
-      userId: activeRole === 'ADMIN' ? 'usr-admin-1' : activeRole === 'PROFESSOR' ? 'usr-prof-1' : 'usr-st-1',
+      userId: activeRole === 'ADMIN' ? 'user-admin-1' : activeRole === 'PROFESSOR' ? 'user-prof-1' : 'user-stu-1',
       title,
       message,
       isRead: false,
@@ -69,7 +69,7 @@ export default function App() {
   const triggerActivityLog = (action: string) => {
     const newLog: ActivityLog = {
       id: `log-${Date.now()}`,
-      userId: activeRole === 'ADMIN' ? 'usr-admin-1' : activeRole === 'PROFESSOR' ? 'usr-prof-1' : 'usr-st-1',
+      userId: activeRole === 'ADMIN' ? 'user-admin-1' : activeRole === 'PROFESSOR' ? 'user-prof-1' : 'user-stu-1',
       action,
       createdAt: new Date().toISOString(),
     };

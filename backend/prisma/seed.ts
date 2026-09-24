@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting Persian Seed Data Generation for University Internship System...');
+  console.log('🌱 Starting Persian Seed Data Generation for Semnan University Internship System...');
 
   // Clean existing tables in reverse relational order
   await prisma.activityLog.deleteMany();
@@ -19,394 +19,574 @@ async function main() {
   await prisma.professor.deleteMany();
   await prisma.user.deleteMany();
 
-  const defaultPassword = await bcrypt.hash('Password123!', 10);
+  const defaultPassword = await bcrypt.hash('Password123@', 10);
 
   // 1. Create Admin User
   const adminUser = await prisma.user.create({
     data: {
-      firstName: 'علی',
-      lastName: 'احمدی',
-      email: 'admin@university.ac.ir',
-      nationalCode: '0012345678',
+      id: 'user-admin-1',
+      firstName: 'علیرضا',
+      lastName: 'حسینی',
+      email: 'internship_office@semnan.ac.ir',
+      nationalCode: '0098765432',
       password: defaultPassword,
-      phoneNumber: '09121112233',
+      phoneNumber: '02331530000',
       role: Role.ADMIN,
       isActive: true,
       activityLogs: {
         create: [
-          { action: 'ورود به سامانه به عنوان مدیر ارشد سیستم با کد ملی 0012345678' },
-          { action: 'راه‌اندازی اولیه سامانه و بررسی تنظیمات دوره کارآموزی' }
+          { action: 'ورود مهندس حسینی (مدیر اداره کارآموزی) به سامانه جامع دانشگاه' },
+          { action: 'بررسی آیین‌نامه و شیوه اجرای دوره کارآموزی تابستان ۱۴۰۳' }
         ]
       }
-    } as any
+    }
   });
 
-  // 2. Create 5 Professors
-  const professorData = [
+  // 2. Create Professors
+  const professorsData = [
     {
-      first: 'حمیدرضا',
-      last: 'صادقی',
-      email: 'dr.sadeghi@university.ac.ir',
-      nationalCode: '0010000001',
-      phone: '09121000001',
-      dept: 'مهندسی کامپیوتر و فناوری اطلاعات',
-      rank: 'استاد تمام'
+      userId: 'user-prof-1',
+      profId: 'prof-1',
+      firstName: 'محمد',
+      lastName: 'رضایی',
+      email: 'rezaei@semnan.ac.ir',
+      nationalCode: '0011223344',
+      phoneNumber: '09127894561',
+      department: 'مهندسی کامپیوتر',
+      academicRank: 'دانشیار'
     },
     {
-      first: 'زهرا',
-      last: 'کریمی',
-      email: 'dr.karimi@university.ac.ir',
-      nationalCode: '0010000002',
-      phone: '09121000002',
-      dept: 'مهندسی برق و سیستم‌های مخابراتی',
-      rank: 'دانشیار'
-    },
-    {
-      first: 'محسن',
-      last: 'موسوی',
-      email: 'dr.mousavi@university.ac.ir',
-      nationalCode: '0010000003',
-      phone: '09121000003',
-      dept: 'مهندسی صنایع و مدیریت سیستم',
-      rank: 'استادیار'
-    },
-    {
-      first: 'مریم',
-      last: 'ابراهیمی',
-      email: 'dr.ebrahimi@university.ac.ir',
-      nationalCode: '0010000004',
-      phone: '09121000004',
-      dept: 'مهندسی کامپیوتر و هوش مصنوعی',
-      rank: 'دانشیار'
-    },
-    {
-      first: 'امیرحسین',
-      last: 'حسینی',
-      email: 'dr.hosseini@university.ac.ir',
-      nationalCode: '0010000005',
-      phone: '09121000005',
-      dept: 'مهندسی مکانیک و طراحی کاربردی',
-      rank: 'استاد تمام'
+      userId: 'user-prof-2',
+      profId: 'prof-2',
+      firstName: 'سارا',
+      lastName: 'احمدی',
+      email: 'ahmadi_s@semnan.ac.ir',
+      nationalCode: '0022334455',
+      phoneNumber: '09128912345',
+      department: 'مهندسی صنایع',
+      academicRank: 'استادیار'
     }
   ];
 
   const createdProfessors = [];
-  for (const p of professorData) {
+  for (const p of professorsData) {
     const user = await prisma.user.create({
       data: {
-        firstName: p.first,
-        lastName: p.last,
+        id: p.userId,
+        firstName: p.firstName,
+        lastName: p.lastName,
         email: p.email,
         nationalCode: p.nationalCode,
         password: defaultPassword,
-        phoneNumber: p.phone,
+        phoneNumber: p.phoneNumber,
         role: Role.PROFESSOR,
         isActive: true,
         activityLogs: {
-          create: [{ action: `ورود استاد ${p.first} ${p.last} (کد ملی: ${p.nationalCode}) به سامانه نظارت کارآموزی` }]
+          create: [{ action: `ورود استاد ${p.firstName} ${p.lastName} به سامانه نظارت کارآموزی` }]
         }
-      } as any
+      }
     });
 
     const prof = await prisma.professor.create({
       data: {
+        id: p.profId,
         userId: user.id,
-        department: p.dept,
-        academicRank: p.rank
+        department: p.department,
+        academicRank: p.academicRank
       }
     });
     createdProfessors.push(prof);
   }
 
-  // 3. Create 10 Students
-  const studentData = [
-    { first: 'محمد', last: 'رضایی', email: 'm.rezaei@student.ac.ir', nationalCode: '0020000001', phone: '09351000001', stNo: '99123401', faculty: 'دانشکده مهندسی کامپیوتر', major: 'مهندسی نرم‌افزار', degree: 'کارشناسی' },
-    { first: 'سارا', last: 'علوی', email: 's.alavi@student.ac.ir', nationalCode: '0020000002', phone: '09351000002', stNo: '99123402', faculty: 'دانشکده مهندسی کامپیوتر', major: 'فناوری اطلاعات و شبکه', degree: 'کارشناسی' },
-    { first: 'پویا', last: 'فرهادی', email: 'p.farhadi@student.ac.ir', nationalCode: '0020000003', phone: '09351000003', stNo: '99123403', faculty: 'دانشکده مهندسی برق', major: 'الکترونیک دیجیتال', degree: 'کارشناسی' },
-    { first: 'نیلوفر', last: 'کاظمی', email: 'n.kazemi@student.ac.ir', nationalCode: '0020000004', phone: '09351000004', stNo: '99123404', faculty: 'دانشکده صنایع', major: 'مدیریت زنجیره تأمین', degree: 'کارشناسی' },
-    { first: 'امید', last: 'باقری', email: 'o.bagheri@student.ac.ir', nationalCode: '0020000005', phone: '09351000005', stNo: '99123405', faculty: 'دانشکده مهندسی کامپیوتر', major: 'هوش مصنوعی و داده', degree: 'کارشناسی ارشد' },
-    { first: 'فاطمه', last: 'نجفی', email: 'f.najafi@student.ac.ir', nationalCode: '0020000006', phone: '09351000006', stNo: '99123406', faculty: 'دانشکده مهندسی مکانیک', major: 'مکانیک جامدات و ساخت', degree: 'کارشناسی' },
-    { first: 'آرش', last: 'رستم‌زاده', email: 'a.rostam@student.ac.ir', nationalCode: '0020000007', phone: '09351000007', stNo: '99123407', faculty: 'دانشکده مهندسی کامپیوتر', major: 'امنیت اطلاعات', degree: 'کارشناسی ارشد' },
-    { first: 'مهسا', last: 'حیدری', email: 'm.heidari@student.ac.ir', nationalCode: '0020000008', phone: '09351000008', stNo: '99123408', faculty: 'دانشکده مهندسی صنایع', major: 'بهینه‌سازی سیستم‌ها', degree: 'کارشناسی' },
-    { first: 'سینا', last: 'مرادی', email: 's.moradi@student.ac.ir', nationalCode: '0020000009', phone: '09351000009', stNo: '99123409', faculty: 'دانشکده مهندسی کامپیوتر', major: 'نرم‌افزار و رایانش ابری', degree: 'کارشناسی' },
-    { first: 'یلدا', last: 'پیروزیان', email: 'y.pirouz@student.ac.ir', nationalCode: '0020000010', phone: '09351000010', stNo: '99123410', faculty: 'دانشکده برق', major: 'کنترل و ابزار دقیق', degree: 'کارشناسی' }
+  // 3. Create Students
+  const studentsData = [
+    {
+      userId: 'user-stu-1',
+      studentId: 'stu-1',
+      studentNumber: '400105432',
+      firstName: 'محمد',
+      lastName: 'احمدی',
+      email: 'm.ahmadi@semnan.ac.ir',
+      nationalCode: '0021345678',
+      phoneNumber: '09121234567',
+      faculty: 'مهندسی کامپیوتر',
+      major: 'مهندسی نرم‌افزار',
+      degreeLevel: 'کارشناسی'
+    },
+    {
+      userId: 'user-stu-2',
+      studentId: 'stu-2',
+      studentNumber: '400108921',
+      firstName: 'علی',
+      lastName: 'رضایی',
+      email: 'a.rezaei@semnan.ac.ir',
+      nationalCode: '0019876543',
+      phoneNumber: '09122345678',
+      faculty: 'مهندسی کامپیوتر',
+      major: 'هوش مصنوعی و داده',
+      degreeLevel: 'کارشناسی'
+    },
+    {
+      userId: 'user-stu-3',
+      studentId: 'stu-3',
+      studentNumber: '400201456',
+      firstName: 'سارا',
+      lastName: 'محمدی',
+      email: 's.mohammadi@semnan.ac.ir',
+      nationalCode: '0032145698',
+      phoneNumber: '09123456789',
+      faculty: 'مهندسی صنایع',
+      major: 'تحلیل سیستم‌ها',
+      degreeLevel: 'کارشناسی'
+    },
+    {
+      userId: 'user-stu-4',
+      studentId: 'stu-4',
+      studentNumber: '400305882',
+      firstName: 'مهدی',
+      lastName: 'کریمی',
+      email: 'm.karimi@semnan.ac.ir',
+      nationalCode: '0045678912',
+      phoneNumber: '09124567890',
+      faculty: 'مهندسی کامپیوتر',
+      major: 'فناوری اطلاعات',
+      degreeLevel: 'کارشناسی'
+    }
   ];
 
   const createdStudents = [];
-  for (const s of studentData) {
+  for (const s of studentsData) {
     const user = await prisma.user.create({
       data: {
-        firstName: s.first,
-        lastName: s.last,
+        id: s.userId,
+        firstName: s.firstName,
+        lastName: s.lastName,
         email: s.email,
         nationalCode: s.nationalCode,
         password: defaultPassword,
-        phoneNumber: s.phone,
+        phoneNumber: s.phoneNumber,
         role: Role.STUDENT,
         isActive: true,
         activityLogs: {
-          create: [{ action: `ورود دانشجو ${s.first} ${s.last} (شماره دانشجویی: ${s.stNo} - کد ملی: ${s.nationalCode}) به پرتال دانشجویی کارآموزی` }]
+          create: [{ action: `ورود دانشجو ${s.firstName} ${s.lastName} (شماره دانشجویی: ${s.studentNumber}) به سامانه کارآموزی` }]
         }
-      } as any
-    });
-
-    const st = await prisma.student.create({
-      data: {
-        userId: user.id,
-        studentNumber: s.stNo,
-        faculty: s.faculty,
-        major: s.major,
-        degreeLevel: s.degree
       }
     });
-    createdStudents.push(st);
+
+    const stu = await prisma.student.create({
+      data: {
+        id: s.studentId,
+        userId: user.id,
+        studentNumber: s.studentNumber,
+        faculty: s.faculty,
+        major: s.major,
+        degreeLevel: s.degreeLevel
+      }
+    });
+    createdStudents.push(stu);
   }
 
-  // 4. Create 10 Companies
-  const companyData = [
-    { name: 'دیجی‌کالا (گروه فناوری نوآوران)', industry: 'تجارت الکترونیک و رایانش ابری', city: 'تهران', address: 'تهران، خیابان گاندی، خیابان بیست و یکم، پلاک ۲۸', phone: '02161930000', sup: 'مهندس سعید پورعلی', supPhone: '09123456789' },
-    { name: 'اسنپ (ایده گزین ارتباطات روماک)', industry: 'حمل و نقل آنلاین و سکوی خدمات مبتنی بر موقعیت', city: 'تهران', address: 'تهران، خیابان ولیعصر، بالاتر از میدان ونک، برج نگار', phone: '02196642', sup: 'خانم مهندس هدی زارعی', supPhone: '09123456790' },
-    { name: 'کافه‌بازار (آوای همراه هوشمند)', industry: 'توزیع برنامه‌های اندروید و خدمات داده ابری', city: 'تهران', address: 'تهران، میدان ونک، خیابان ملاصدرا، خیابان پردیس، پلاک ۳۱', phone: '02188880000', sup: 'مهندس رضا تقوی', supPhone: '09123456791' },
-    { name: 'گروه صنعتی مپنا (مدیریت پروژه‌های نیروگاهی ایران)', industry: 'صنایع ریلی، توربین و برق صنعتی', city: 'تهران', address: 'تهران، بلوار میرداماد، نبش خیابان کوده، شماره ۲۳۱', phone: '02122908585', sup: 'دکتر بهمن رادمنش', supPhone: '09123456792' },
-    { name: 'فناپ (فناوری اطلاعات و ارتباطات پاسارگاد آریان)', industry: 'فناوری مالی، بانکداری دیجیتال و زیرساخت شبکه', city: 'تهران', address: 'تهران، شهرک غرب، بلوار دادمان، خیابان شفق، پلاک ۱۰', phone: '02189510000', sup: 'مهندس علیرضا کیانی', supPhone: '09123456793' },
-    { name: 'دیوار (سامانه نیازمندی‌های آنلاین)', industry: 'بسترهای مقیاس‌پذیر اینترنتی و هوش مصنوعی', city: 'تهران', address: 'تهران، کوی نصر (گیشا)، خیابان شهید علیالی، پلاک ۶۲', phone: '02143000020', sup: 'مهندس نوید صادقیان', supPhone: '09123456794' },
-    { name: 'آسان پرداخت پرشین (آپ)', industry: 'سامانه‌های پرداخت الکترونیک و امنیت تراکنش', city: 'تهران', address: 'تهران، خیابان کریمخان زند، خیابان سنایی، پلاک ۷', phone: '02183333', sup: 'خانم مهندس شیما افشار', supPhone: '09123456795' },
-    { name: 'شاتل (گروه فناوری ارتباطات و اطلاعات شاتل)', industry: 'ارتباطات ماهواره‌ای، فیبر نوری و دیتاسنتر', city: 'تهران', address: 'تهران، خیابان شریعتی، بالاتر از پل رومی، کوچه سینا، پلاک ۳', phone: '02191000000', sup: 'مهندس مسعود کرمی', supPhone: '09123456796' },
-    { name: 'ایرانسل (خدمات ارتباطی ایرانسل)', industry: 'مخابرات سیار، اینترنت اشیاء و شبکه 5G', city: 'تهران', address: 'تهران، میدان هروی، خیابان پناهی‌نیا، خیابان زندی غربی', phone: '021707', sup: 'دکتر فریبرز نیک‌نام', supPhone: '09123456797' },
-    { name: 'تپسی (پیشگامان فناوری و دانش آرامیس)', industry: 'سامانه‌های هوشمند تحلیل ترافیک و اعزام سفیران', city: 'تهران', address: 'تهران، سعادت‌آباد، خیابان سرو غربی، خیابان صدف، پلاک ۴', phone: '0211630', sup: 'مهندس کیوان معتمدی', supPhone: '09123456798' }
+  // 4. Create Companies
+  const companiesData = [
+    {
+      id: 'comp-1',
+      name: 'شرکت فناوران هوشمند',
+      industry: 'توسعه نرم‌افزارهای ابری و هوش مصنوعی',
+      city: 'تهران',
+      address: 'تهران، خیابان آزادی، ناحیه نوآوری شریف، برج فناوری، طبقه ۵',
+      phone: '۰۲۱-۶۶۷۸۹۰۰۱',
+      supervisorName: 'مهندس آرش طاهری',
+      supervisorPhone: '09121112233'
+    },
+    {
+      id: 'comp-2',
+      name: 'شرکت توسعه نرم افزار پارس',
+      industry: 'سیستم‌های بانکی و پرداخت الکترونیک',
+      city: 'تهران',
+      address: 'تهران، سعادت آباد، بلوار پاکنژاد، پلاک ۴۲',
+      phone: '۰۲۱-۲۲۰۸۹۴۵۰',
+      supervisorName: 'مهندس مریم صادقی',
+      supervisorPhone: '09122223344'
+    },
+    {
+      id: 'comp-3',
+      name: 'شرکت فناوری اطلاعات آریا',
+      industry: 'امنیت سایبری و زیرساخت شبکه',
+      city: 'تهران',
+      address: 'تهران، میدان ونک، خیابان ملاصدرا، ساختمان پردیس',
+      phone: '۰۲۱-۸۸۹۹۰۰۱۱',
+      supervisorName: 'دکتر کامران شفیعی',
+      supervisorPhone: '09123334455'
+    },
+    {
+      id: 'comp-4',
+      name: 'هلدینگ داده‌ورزان نوین',
+      industry: 'طراحی داده‌محور و سامانه‌های سازمانی',
+      city: 'سمنان',
+      address: 'سمنان، پردیس فناوری دانشگاه سمنان، ساختمان نوآوری',
+      phone: '۰۲۳-۳۳۴۴۵۵۶۶',
+      supervisorName: 'مهندس پویا فرهمند',
+      supervisorPhone: '09124445566'
+    }
   ];
 
   const createdCompanies = [];
-  for (const c of companyData) {
+  for (const c of companiesData) {
     const comp = await prisma.company.create({
-      data: {
-        name: c.name,
-        industry: c.industry,
-        city: c.city,
-        address: c.address,
-        phone: c.phone,
-        supervisorName: c.sup,
-        supervisorPhone: c.supPhone
-      }
+      data: c
     });
     createdCompanies.push(comp);
   }
 
-  // 5. Create 20 Internship Requests
-  const requestTitles = [
-    'کارآموزی توسعه بک‌اند با NestJS و میکروسرویس‌ها',
-    'کارآموزی طراحی سیستم‌های توزیع‌شده و پیام‌رسانی با کافکا',
-    'کارآموزی یادگیری ماشین و تحلیل الگوهای سفارش در تجارت الکترونیک',
-    'کارآموزی پیاده‌سازی و پایش زیرساخت‌های کلود و کوبرنتیز',
-    'کارآموزی بهینه‌سازی الگوریتم‌های هوشمند تخصیص ناوگان',
-    'کارآموزی توسعه وب فرانت‌اند مدرن با React و Next.js',
-    'کارآموزی ارزیابی و تست نفوذ سامانه‌های تراکنش بانکی',
-    'کارآموزی نگهداری و اتوماسیون توربین‌های نیروگاهی',
-    'کارآموزی کنترل کیفی و بازرسی خطوط تولید قطعات پیشرفته',
-    'کارآموزی بهینه‌سازی زنجیره لجستیک انبارهای مکانیزه',
-    'کارآموزی تحلیل داده‌های ترافیکی و سناریوهای مسیریابی بهینه',
-    'کارآموزی پیاده‌سازی گیت‌وی پرداخت الکترونیک امن',
-    'کارآموزی مهندسی معکوس و پروتکل‌های اینترنت اشیاء صنعتی',
-    'کارآموزی طراحی رابط و تجربه کاربری (UI/UX) اپلیکیشن',
-    'کارآموزی مانیتورینگ شبکه انتقال و دیتاسنتر فیبر نوری',
-    'کارآموزی شبیه‌سازی دینامیک سیالات سیستم‌های هیدرولیکی',
-    'کارآموزی هوش تجاری و طراحی داشبوردهای آماری با Power BI',
-    'کارآموزی اتوماسیون فرآیندهای اداری و سیستم‌های جامع سازمانی',
-    'کارآموزی بینایی ماشین برای تشخیص خودکار نقص در انبار',
-    'کارآموزی معماری پایگاه‌داده‌های توزیع‌شده و کشینگ با ردیس'
-  ];
-
-  const createdRequests = [];
-  for (let i = 0; i < 20; i++) {
-    const student = createdStudents[i % createdStudents.length];
-    const company = createdCompanies[i % createdCompanies.length];
-    const title = requestTitles[i];
-    
-    // Status distribution: 15 APPROVED, 3 PENDING, 2 REJECTED
-    let status: RequestStatus = RequestStatus.APPROVED;
-    if (i === 16 || i === 17 || i === 18) status = RequestStatus.PENDING;
-    if (i === 19) status = RequestStatus.REJECTED;
-
-    const startDate = new Date(2026, 6, 1 + (i % 5));
-    const endDate = new Date(2026, 8, 30);
-
-    const req = await prisma.internshipRequest.create({
-      data: {
-        studentId: student.id,
-        companyId: company.id,
-        title,
-        description: `درخواست رسمی کارآموزی تابستانه جهت گذراندن دوره ۲۴۰ ساعته کارآموزی در شرکت ${company.name} تحت عنوان تخصصی ${title}.`,
-        startDate,
-        endDate,
-        totalHours: 240,
-        status
-      }
-    });
-    createdRequests.push(req);
-  }
-
-  // 6. Create 15 Internships (from the 15 APPROVED requests)
-  const createdInternships = [];
-  for (let i = 0; i < 15; i++) {
-    const req = createdRequests[i];
-    const professor = createdProfessors[i % createdProfessors.length];
-    
-    // Status distribution: 10 ACTIVE, 4 COMPLETED, 1 REJECTED/DROPPED
-    let status: InternshipStatus = InternshipStatus.ACTIVE;
-    let progress = Math.min(100, Math.floor((i + 3) * 7.5));
-    if (i >= 10 && i < 14) {
-      status = InternshipStatus.COMPLETED;
-      progress = 100;
-    } else if (i === 14) {
-      status = InternshipStatus.PENDING;
-      progress = 0;
+  // 5. Create Internship Requests
+  const requestsData = [
+    {
+      id: 'req-1',
+      studentId: 'stu-1',
+      companyId: 'comp-1',
+      title: 'توسعه بک‌اند و سرویس‌های میکروسرویس',
+      description: 'درخواست رسمی کارآموزی تابستانه جهت گذراندن دوره ۲۴۰ ساعته کارآموزی در شرکت فناوران هوشمند در زمینه توسعه بک‌اند.',
+      startDate: new Date('2024-06-21T00:00:00.000Z'),
+      endDate: new Date('2024-09-21T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.APPROVED
+    },
+    {
+      id: 'req-2',
+      studentId: 'stu-2',
+      companyId: 'comp-4',
+      title: 'طراحی رابط کاربری و تحلیل تجربه کاربری',
+      description: 'درخواست کارآموزی در هلدینگ داده‌ورزان نوین برای زمینه طراحی رابط کاربری و تحلیل تجربه کاربری.',
+      startDate: new Date('2024-09-22T00:00:00.000Z'),
+      endDate: new Date('2024-12-20T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.PENDING
+    },
+    {
+      id: 'req-3',
+      studentId: 'stu-3',
+      companyId: 'comp-2',
+      title: 'تحلیل داده و کنترل فرآیند تولید',
+      description: 'درخواست کارآموزی در شرکت توسعه نرم افزار پارس جهت تحلیل داده و کنترل فرآیند تولید.',
+      startDate: new Date('2024-09-26T00:00:00.000Z'),
+      endDate: new Date('2024-12-25T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.PENDING
+    },
+    // Supporting approved requests for active/completed internships 2, 3, and 4
+    {
+      id: 'req-intern-2',
+      studentId: 'stu-2',
+      companyId: 'comp-2',
+      title: 'سیستم‌های بانکی و پرداخت الکترونیک',
+      description: 'درخواست مصوب دوره کارآموزی در شرکت توسعه نرم‌افزار پارس.',
+      startDate: new Date('2024-06-30T00:00:00.000Z'),
+      endDate: new Date('2024-10-01T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.APPROVED
+    },
+    {
+      id: 'req-intern-3',
+      studentId: 'stu-3',
+      companyId: 'comp-3',
+      title: 'امنیت سایبری و زیرساخت شبکه',
+      description: 'درخواست مصوب دوره کارآموزی در شرکت فناوری اطلاعات آریا.',
+      startDate: new Date('2024-07-05T00:00:00.000Z'),
+      endDate: new Date('2024-10-05T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.APPROVED
+    },
+    {
+      id: 'req-intern-4',
+      studentId: 'stu-4',
+      companyId: 'comp-1',
+      title: 'توسعه سامانه‌های فناوری اطلاعات و کلود',
+      description: 'درخواست مصوب دوره کارآموزی دانشجو مهدی کریمی در شرکت فناوران هوشمند.',
+      startDate: new Date('2024-06-04T00:00:00.000Z'),
+      endDate: new Date('2024-09-04T00:00:00.000Z'),
+      totalHours: 240,
+      status: RequestStatus.APPROVED
     }
-
-    const internship = await prisma.internship.create({
-      data: {
-        studentId: req.studentId,
-        professorId: professor.id,
-        companyId: req.companyId,
-        requestId: req.id,
-        startDate: req.startDate,
-        endDate: req.endDate,
-        progressPercentage: progress,
-        status
-      }
-    });
-    createdInternships.push(internship);
-
-    // Add Introduction Letter Document
-    await prisma.document.create({
-      data: {
-        internshipId: internship.id,
-        fileName: `معرفی‌نامه_رسمی_دانشگاه_شماره_${i + 101}.pdf`,
-        filePath: `/uploads/documents/intro_letter_${internship.id}.pdf`,
-        documentType: DocumentType.INTRODUCTION_LETTER
-      }
-    });
-  }
-
-  // 7. Create 50 Weekly Reports
-  const reportTopics = [
-    { act: 'آشنایی با متدولوژی اجایل اسکرام، تحویل وظایف و بررسی ساختار ریپازیتوری کدهای شرکت', skill: 'Git, Jira, Agile Scrum, Docker' },
-    { act: 'راه‌اندازی محیط توسعه محلی با داکر کامپوز و اتصال به سرویس ردیس و دیتابیس پستگرس', skill: 'Docker Compose, PostgreSQL, Redis' },
-    { act: 'طراحی ساختار ماژولار انتیتی‌ها و مایگریشن جداول اولیه در ORM', skill: 'Prisma ORM, Relational Schema Design' },
-    { act: 'پیاده‌سازی ماژول احراز هویت با JWT، هش‌کردن پسوردها و گارد نقش‌ها (RBAC)', skill: 'JWT Authentication, Guards, Security' },
-    { act: 'طراحی و پیاده‌سازی اندپوینت‌های CRUD همراه با اعتبارسنجی ورودی‌ها و مستندسازی سواگر', skill: 'NestJS Controllers, DTOs, Swagger' },
-    { act: 'تست‌نویسی جامع واحد (Unit Test) برای سرویس‌های اصلی با Jest', skill: 'TDD, Jest, Unit Testing' },
-    { act: 'اتصال سرویس صف پیام با BullMQ برای ارسال ایمیل‌ها و نوتیفیکیشن‌های ناهمگام', skill: 'Message Queues, Background Jobs' },
-    { act: 'ارزیابی عملکرد اندپوینت‌ها با ابزار k6 و اعمال کشینگ برای کوئری‌های پرتکرار', skill: 'Performance Benchmarking, Caching' },
-    { act: 'ایجاد خط لوله CI/CD با گیت‌لب جهت تست خودکار و دیپلوی در محیط استیجینگ', skill: 'CI/CD Pipelines, DevOps' },
-    { act: 'نگارش گزارش نهایی دوره کارآموزی و آماده‌سازی ارائه دفاعیه برای سرپرست شرکت', skill: 'Technical Documentation, Presentation' }
   ];
 
-  let reportCount = 0;
-  for (let i = 0; i < createdInternships.length && reportCount < 50; i++) {
-    const internship = createdInternships[i];
-    // Each internship gets 3-4 weekly reports
-    const reportsForThisInternship = Math.min(4, 50 - reportCount);
+  for (const req of requestsData) {
+    await prisma.internshipRequest.create({ data: req });
+  }
 
-    for (let w = 1; w <= reportsForThisInternship; w++) {
-      reportCount++;
-      const topicIndex = (reportCount - 1) % reportTopics.length;
-      const topic = reportTopics[topicIndex];
-      const weekStart = new Date(internship.startDate.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
-      const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-
-      // Status distribution: APPROVED, SUBMITTED, DRAFT
-      let status: ReportStatus = ReportStatus.APPROVED;
-      let comment: string | null = 'گزارش این هفته بررسی و تأیید گردید. روند پیشرفت کار بسیار منظم و مطلوب است.';
-      if (w === 3 && i % 2 === 0) {
-        status = ReportStatus.SUBMITTED;
-        comment = null;
-      } else if (w === 4) {
-        status = ReportStatus.DRAFT;
-        comment = null;
-      }
-
-      await prisma.weeklyReport.create({
-        data: {
-          internshipId: internship.id,
-          weekNumber: w,
-          startDate: weekStart,
-          endDate: weekEnd,
-          activities: topic.act,
-          skillsLearned: topic.skill,
-          challenges: w % 2 === 0 ? 'چالش سازگاری نسخه‌های کتابخانه‌های جانبی و مدیریت خطاهای شبکه‌ای که با دیباگ حل شد.' : 'عدم دسترسی اولیه به مستندات داخلی سرورها که با راهنمایی منتور شرکت مرتفع شد.',
-          description: `شرح عملکرد و فعالیت‌های انجام‌شده توسط دانشجو در هفته ${w} دوره کارآموزی زیر نظر سرپرست واحد فنی.`,
-          status,
-          professorComment: comment
-        }
-      });
+  // 6. Create Internships
+  const internshipsData = [
+    {
+      id: 'intern-1',
+      studentId: 'stu-1',
+      professorId: 'prof-1',
+      companyId: 'comp-1',
+      requestId: 'req-1',
+      startDate: new Date('2024-06-21T00:00:00.000Z'),
+      endDate: new Date('2024-09-21T00:00:00.000Z'),
+      progressPercentage: 75,
+      status: InternshipStatus.ACTIVE
+    },
+    {
+      id: 'intern-2',
+      studentId: 'stu-2',
+      professorId: 'prof-1',
+      companyId: 'comp-2',
+      requestId: 'req-intern-2',
+      startDate: new Date('2024-06-30T00:00:00.000Z'),
+      endDate: new Date('2024-10-01T00:00:00.000Z'),
+      progressPercentage: 100,
+      status: InternshipStatus.ACTIVE
+    },
+    {
+      id: 'intern-3',
+      studentId: 'stu-3',
+      professorId: 'prof-2',
+      companyId: 'comp-3',
+      requestId: 'req-intern-3',
+      startDate: new Date('2024-07-05T00:00:00.000Z'),
+      endDate: new Date('2024-10-05T00:00:00.000Z'),
+      progressPercentage: 50,
+      status: InternshipStatus.ACTIVE
+    },
+    {
+      id: 'intern-4',
+      studentId: 'stu-4',
+      professorId: 'prof-1',
+      companyId: 'comp-1',
+      requestId: 'req-intern-4',
+      startDate: new Date('2024-06-04T00:00:00.000Z'),
+      endDate: new Date('2024-09-04T00:00:00.000Z'),
+      progressPercentage: 100,
+      status: InternshipStatus.COMPLETED
     }
-  }
-
-  // 8. Create Evaluations for COMPLETED Internships (4 completed)
-  const completedInternships = createdInternships.filter(ins => ins.status === InternshipStatus.COMPLETED);
-  for (let idx = 0; idx < completedInternships.length; idx++) {
-    const ins = completedInternships[idx];
-    const tech = 18.5 + (idx * 0.4);
-    const resp = 19.0 + (idx * 0.2);
-    const disc = 19.5;
-    const team = 18.0 + (idx * 0.5);
-    const att = 20.0;
-    const finalScore = parseFloat(((tech + resp + disc + team + att) / 5).toFixed(2));
-
-    await prisma.evaluation.create({
-      data: {
-        internshipId: ins.id,
-        technicalSkill: Math.min(20, tech),
-        responsibility: Math.min(20, resp),
-        discipline: disc,
-        teamwork: Math.min(20, team),
-        attendance: att,
-        description: 'دانشجو در طول دوره کارآموزی تعهد کاری بسیار بالا، انضباط حرفه‌ای و اشتیاق زیادی به یادگیری تکنولوژی‌های نوین از خود نشان داد.',
-        finalScore
-      }
-    });
-
-    // Add Final Report Document
-    await prisma.document.create({
-      data: {
-        internshipId: ins.id,
-        fileName: `گزارش_جامع_پایان_دوره_کارآموزی_${ins.id.slice(0, 6)}.pdf`,
-        filePath: `/uploads/documents/final_report_${ins.id}.pdf`,
-        documentType: DocumentType.FINAL_REPORT
-      }
-    });
-  }
-
-  // 9. Automated Notifications & Activity Logs
-  const sampleNotifications = [
-    { title: 'تأیید درخواست کارآموزی', message: 'درخواست کارآموزی شما در شرکت دیجی‌کالا توسط استاد ناظر تأیید و پرونده فعال گردید.' },
-    { title: 'تأیید گزارش هفتگی ۳', message: 'گزارش هفتگی شماره ۳ شما توسط استاد ناظر بررسی و تأیید شد.' },
-    { title: 'ثبت ارزیابی نهایی', message: 'نمره ارزیابی نهایی و گواهی اتمام دوره کارآموزی شما با موفقیت ثبت شد.' },
-    { title: 'یادآوری ارسال گزارش', message: 'مهلت ثبت گزارش هفتگی شماره ۴ تا پایان هفته جاری می‌باشد.' }
   ];
 
-  for (let i = 0; i < createdStudents.length; i++) {
-    const student = createdStudents[i];
-    const notif = sampleNotifications[i % sampleNotifications.length];
-    await prisma.notification.create({
-      data: {
-        userId: student.userId,
-        title: notif.title,
-        message: notif.message,
-        isRead: i % 2 === 0
-      }
-    });
+  for (const ins of internshipsData) {
+    await prisma.internship.create({ data: ins });
   }
 
-  console.log(`✅ Persian Seed completed successfully!`);
-  console.log(`- 1 Admin user (admin@university.ac.ir)`);
-  console.log(`- ${createdProfessors.length} Professors`);
-  console.log(`- ${createdStudents.length} Students`);
-  console.log(`- ${createdCompanies.length} Companies`);
-  console.log(`- ${createdRequests.length} Internship Requests`);
-  console.log(`- ${createdInternships.length} Internships`);
-  console.log(`- ${reportCount} Weekly Reports`);
-  console.log(`- ${completedInternships.length} Completed Evaluations`);
+  // 7. Create Weekly Reports
+  const reportsData = [
+    {
+      id: 'rep-1',
+      internshipId: 'intern-1',
+      weekNumber: 1,
+      startDate: new Date('2024-06-21T00:00:00.000Z'),
+      endDate: new Date('2024-06-27T00:00:00.000Z'),
+      activities: 'آشنایی با هم‌تیمی‌ها، دریافت دسترسی‌های مخازن Gitlab، کانفیگ محیط تست، بررسی معماری کدهای سمت سرور با فریم‌ورک NestJS.',
+      skillsLearned: 'مفاهیم داکر کامپوز، مدیریت متغیرهای محیطی در تیم و ساختارهای ماژولار در NestJS.',
+      challenges: 'محدودیت دسترسی به برخی پکیج‌های رجیستری که با تنظیم پروکسی شرکتی برطرف گردید.',
+      description: 'آشنایی با ساختار پروژه و راه‌اندازی محیط توسعه Docker',
+      status: ReportStatus.APPROVED,
+      professorComment: 'شروع بسیار خوب و منظمی است. در گزارش‌های بعدی ساختار دقیق‌تر کامپوننت‌های پایگاه داده را نیز قید بفرمایید.'
+    },
+    {
+      id: 'rep-2',
+      internshipId: 'intern-1',
+      weekNumber: 2,
+      startDate: new Date('2024-06-28T00:00:00.000Z'),
+      endDate: new Date('2024-07-04T00:00:00.000Z'),
+      activities: 'طراحی گارد احراز هویت در NestJS، اتصال به پایگاه داده PostgreSQL از طریق Prisma ORM و نوشتن تست‌های واحد اولیه.',
+      skillsLearned: 'الگوهای امنیتی ذخیره‌سازی توکن، مدیریت اکسپایر شدن سشن‌ها و کار با بیپرینت‌های امنیتی.',
+      challenges: 'چالش در مدیریت Race Condition در رفرش توکن همزمان که با مکانیزم Lock حل شد.',
+      description: 'پیاده‌سازی سرویس احراز هویت با JWT و رفرش توکن',
+      status: ReportStatus.APPROVED,
+      professorComment: 'مستندسازی دقیق بوده و انتخاب Prisma برای مدل‌سازی تایید می‌گردد.'
+    },
+    {
+      id: 'rep-3',
+      internshipId: 'intern-1',
+      weekNumber: 3,
+      startDate: new Date('2024-07-05T00:00:00.000Z'),
+      endDate: new Date('2024-07-11T00:00:00.000Z'),
+      activities: 'ایجاد اندپوینت‌های چندرسانه‌ای برای آپلود با اعتبارسنجی حجم و پسوند، یکپارچه‌سازی با MinIO سازمانی.',
+      skillsLearned: 'مفاهیم Streaming در Node.js و اعتبارسنجی نوع فایل در سطح باینری (MIME type buffer).',
+      challenges: 'مدیریت خطاهای وقفه در آپلود فایل‌های بزرگ که با Resumable Upload حل شد.',
+      description: 'پیاده‌سازی ماژول مدیریت اسناد و بارگذاری فایل‌ها روی S3 Storage',
+      status: ReportStatus.APPROVED,
+      professorComment: 'خوب است، توجه به مباحث امنیتی دسترسی به فایل‌ها (Private vs Public bucket) را جدی بگیرید.'
+    },
+    {
+      id: 'rep-4',
+      internshipId: 'intern-1',
+      weekNumber: 4,
+      startDate: new Date('2024-07-12T00:00:00.000Z'),
+      endDate: new Date('2024-07-18T00:00:00.000Z'),
+      activities: 'نوشتن سناریوهای تست با Jest و Supertest، بررسی Execution Plan در دیتابیس و اضافه کردن ایندکس‌های کامپوزیت.',
+      skillsLearned: 'بهینه‌سازی کارایی ایندکس‌های B-Tree و کاهش زمان اجرای کوئری‌های تودرتو از ۳۵۰ میلی‌ثانیه به ۴۰ میلی‌ثانیه.',
+      challenges: 'تداخل داده‌های سید در اجرای موازی تست‌ها که با تراکنش‌های مجزا رولبک شد.',
+      description: 'توسعه تست‌های یکپارچه و بهینه‌سازی کوئری‌های SQL',
+      status: ReportStatus.APPROVED,
+      professorComment: 'بسیار کاربردی و عالی. شاخص‌های سنجش پرفورمنس بسیار تحسین‌برانگیز است.'
+    },
+    {
+      id: 'rep-5',
+      internshipId: 'intern-1',
+      weekNumber: 5,
+      startDate: new Date('2024-07-19T00:00:00.000Z'),
+      endDate: new Date('2024-07-25T00:00:00.000Z'),
+      activities: 'تنظیم متغیرها و اسکریپت‌های بیلد اتوماتیک، کانتینرسازی مجدد و تست سلامت سیستم با Health Check API.',
+      skillsLearned: 'مفاهیم Continuous Delivery و نحوه مدیریت Secretها در محیط پایپ‌لاین.',
+      challenges: 'محدودیت منابع رانر که با کش کردن لایه‌های داکر زمان بیلد تا ۵۰ درصد کاهش یافت.',
+      description: 'طراحی خط لوله CI/CD با Gitlab Actions و استقرار روی سرور استیجینگ',
+      status: ReportStatus.APPROVED,
+      professorComment: 'تایید می‌شود. دانش استقرار نرم‌افزار برای ورود به بازار کار امتیاز بزرگی است.'
+    },
+    {
+      id: 'rep-6',
+      internshipId: 'intern-1',
+      weekNumber: 6,
+      startDate: new Date('2024-07-26T00:00:00.000Z'),
+      endDate: new Date('2024-08-01T00:00:00.000Z'),
+      activities: 'طراحی صفی از ایونت‌ها جهت تفکیک وظایف ارسال ایمیل و پیامک، ایجاد کانسومرهای منعطف و کنترل Dead Letter Queue.',
+      skillsLearned: 'معماری بر پایه رویداد (EDA) و الگوهای Pub/Sub.',
+      challenges: 'رسیدگی به پیام‌های پردازش‌نشده و مکانیسم Retry با تاخیر تصاعدی (Exponential Backoff).',
+      description: 'پیاده‌سازی پیام‌رسانی ناهمگام با RabbitMQ برای ارسال نوتیفیکیشن‌ها',
+      status: ReportStatus.APPROVED,
+      professorComment: 'کار سطح بالایی است و مهارت‌های فنی به خوبی در این بازه پیاده شده است.'
+    },
+    {
+      id: 'rep-7',
+      internshipId: 'intern-1',
+      weekNumber: 7,
+      startDate: new Date('2024-08-02T00:00:00.000Z'),
+      endDate: new Date('2024-08-08T00:00:00.000Z'),
+      activities: 'تکمیل DTOها با دکوریتورهای Swagger، یکپارچه‌سازی با Winston Logger و ثبت ردپاها با Correlation ID.',
+      skillsLearned: 'استانداردهای بین‌المللی مستندسازی وب‌سرویس و مدیریت سیستم‌های مانیتورینگ متمرکز.',
+      challenges: 'همگام‌سازی شمای کدهای کلاینت با OpenAPI Schema که با اوتوژنراتور برطرف شد.',
+      description: 'مستندسازی APIها با Swagger/OpenAPI و تحلیل لاگ‌های ساختاریافته',
+      status: ReportStatus.SUBMITTED,
+      professorComment: null
+    },
+    {
+      id: 'rep-8',
+      internshipId: 'intern-3',
+      weekNumber: 5,
+      startDate: new Date('2024-08-04T00:00:00.000Z'),
+      endDate: new Date('2024-08-10T00:00:00.000Z'),
+      activities: 'بررسی رخدادهای غیرعادی در ترافیک شبکه، طراحی داشبورد بصری در الستیک‌سرچ و کیبانا.',
+      skillsLearned: 'شناسایی الگوهای حملات DDoS و قوانین WAF.',
+      challenges: 'حجم بالای لاگ‌ها که با ایجاد فیلترهای استخراجی تفکیک شد.',
+      description: 'تحلیل داده‌های لاگ امنیتی و نمودارهای پایش فایروال',
+      status: ReportStatus.SUBMITTED,
+      professorComment: null
+    }
+  ];
+
+  for (const rep of reportsData) {
+    await prisma.weeklyReport.create({ data: rep });
+  }
+
+  // 8. Create Evaluations
+  const evaluationsData = [
+    {
+      id: 'eval-1',
+      internshipId: 'intern-2',
+      technicalSkill: 19.5,
+      responsibility: 19.0,
+      discipline: 19.5,
+      teamwork: 19.0,
+      attendance: 20.0,
+      description: 'دانشجو علی رضایی دوره کارآموزی را در شرکت توسعه نرم‌افزار پارس با موفقیت بالا به پایان رساند و مهارت‌های فنی برجسته‌ای از خود نشان داد.',
+      finalScore: 19.25
+    },
+    {
+      id: 'eval-2',
+      internshipId: 'intern-4',
+      technicalSkill: 20.0,
+      responsibility: 20.0,
+      discipline: 20.0,
+      teamwork: 20.0,
+      attendance: 20.0,
+      description: 'عملکرد دانشجو مهدی کریمی در شرکت فناوران هوشمند در بالاترین سطح ارزیابی شد و پروژه نهایی با موفقیت کامل تحویل گردید.',
+      finalScore: 20.0
+    }
+  ];
+
+  for (const ev of evaluationsData) {
+    await prisma.evaluation.create({ data: ev });
+  }
+
+  // 9. Create Documents
+  const documentsData = [
+    {
+      id: 'doc-1',
+      internshipId: 'intern-1',
+      fileName: 'ahmadi_intro_letter.pdf',
+      filePath: '/uploads/documents/ahmadi_intro_letter.pdf',
+      documentType: DocumentType.INTRODUCTION_LETTER
+    },
+    {
+      id: 'doc-2',
+      internshipId: 'intern-1',
+      fileName: 'internship_guideline_1403.pdf',
+      filePath: '/uploads/documents/internship_guideline_1403.pdf',
+      documentType: DocumentType.OTHER
+    },
+    {
+      id: 'doc-3',
+      internshipId: 'intern-2',
+      fileName: 'supervisor_evaluation_template.docx',
+      filePath: '/uploads/documents/supervisor_evaluation_template.docx',
+      documentType: DocumentType.START_FORM
+    },
+    {
+      id: 'doc-4',
+      internshipId: 'intern-4',
+      fileName: 'karimi_internship_certificate.pdf',
+      filePath: '/uploads/documents/karimi_internship_certificate.pdf',
+      documentType: DocumentType.FINAL_REPORT
+    }
+  ];
+
+  for (const doc of documentsData) {
+    await prisma.document.create({ data: doc });
+  }
+
+  // 10. Create Notifications
+  const notificationsData = [
+    {
+      id: 'notif-1',
+      userId: 'user-stu-1',
+      title: 'تایید گزارش هفتگی شماره ۶',
+      message: 'گزارش هفتگی شماره ۶ شما توسط دکتر محمد رضایی بررسی و با نظر مثبت تایید شد.',
+      isRead: false
+    },
+    {
+      id: 'notif-2',
+      userId: 'user-stu-1',
+      title: 'ثبت یادآوری: ارسال گزارش شماره ۷',
+      message: 'مهلت ارسال گزارش کارآموزی هفته هفتم تا پایان روز جمعه می‌باشد.',
+      isRead: true
+    },
+    {
+      id: 'notif-3',
+      userId: 'user-prof-1',
+      title: 'گزارش هفتگی جدید جهت بررسی',
+      message: 'دانشجو محمد احمدی گزارش هفتگی شماره ۷ را جهت بازبینی و ثبت بازخورد ارسال نموده است.',
+      isRead: false
+    },
+    {
+      id: 'notif-4',
+      userId: 'user-prof-1',
+      title: 'دانشجو در انتظار ارزیابی نهایی',
+      message: 'دوره کارآموزی دانشجو علی رضایی تکمیل شده و منتظر تکمیل فرم نمره و ارزیابی استاد است.',
+      isRead: false
+    },
+    {
+      id: 'notif-5',
+      userId: 'user-admin-1',
+      title: 'درخواست کارآموزی جدید ثبت شد',
+      message: 'درخواست کارآموزی جدید توسط دانشجویان در سامانه به ثبت رسید.',
+      isRead: false
+    }
+  ];
+
+  for (const n of notificationsData) {
+    await prisma.notification.create({ data: n });
+  }
+
+  console.log('✅ Persian Seed data updated successfully based on the exact frontend specification!');
 }
 
 main()

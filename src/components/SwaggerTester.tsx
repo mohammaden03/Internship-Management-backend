@@ -56,26 +56,26 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
       defaultBody: {
         identifier:
           activeRole === 'ADMIN'
-            ? '0012345678' // کد ملی مدیر سیستم
+            ? '0098765432' // کد ملی مدیر سیستم (مهندس حسینی)
             : activeRole === 'PROFESSOR'
-              ? '0010000001' // کد ملی استاد ناظر (دکتر صادقی)
-              : '400123456', // شماره دانشجویی محمد رضایی (یا کد ملی: 0020000001)
-        password: 'Password123!',
+              ? '0011223344' // کد ملی استاد ناظر (دکتر محمد رضایی)
+              : '400105432', // شماره دانشجویی محمد احمدی (یا کد ملی: 0021345678)
+        password: 'Password123@',
       },
       responseExample: {
         statusCode: 200,
         message: 'ورود به سامانه با موفقیت انجام شد',
         data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMSIsIm5hdGlvbmFsQ29kZSI6IjAwMTIzNDU2NzgiLCJyb2xlIjoiQURNSU4ifQ...',
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMSIsIm5hdGlvbmFsQ29kZSI6IjAwOTg3NjU0MzIiLCJyb2xlIjoiQURNSU4ifQ...',
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh_token_payload...',
           tokenType: 'Bearer',
           role: activeRole,
           user: {
-            id: 'usr-1',
-            nationalCode: activeRole === 'ADMIN' ? '0012345678' : activeRole === 'PROFESSOR' ? '0010000001' : '0020000001',
-            studentNumber: activeRole === 'STUDENT' ? '400123456' : undefined,
-            firstName: activeRole === 'ADMIN' ? 'علی' : activeRole === 'PROFESSOR' ? 'حمیدرضا' : 'محمد',
-            lastName: activeRole === 'ADMIN' ? 'احمدی' : activeRole === 'PROFESSOR' ? 'صادقی' : 'رضایی',
+            id: activeRole === 'ADMIN' ? 'user-admin-1' : activeRole === 'PROFESSOR' ? 'user-prof-1' : 'user-stu-1',
+            nationalCode: activeRole === 'ADMIN' ? '0098765432' : activeRole === 'PROFESSOR' ? '0011223344' : '0021345678',
+            studentNumber: activeRole === 'STUDENT' ? '400105432' : undefined,
+            firstName: activeRole === 'ADMIN' ? 'علیرضا' : activeRole === 'PROFESSOR' ? 'محمد' : 'محمد',
+            lastName: activeRole === 'ADMIN' ? 'حسینی' : activeRole === 'PROFESSOR' ? 'رضایی' : 'احمدی',
             role: activeRole,
           },
         },
