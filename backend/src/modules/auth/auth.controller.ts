@@ -32,7 +32,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user with email & password, obtain JWT Access & Refresh tokens' })
+  @ApiOperation({ summary: 'Authenticate user with identifier & password, obtain JWT Access & Refresh tokens' })
   @ApiResponse({ status: 200, description: 'Login successful, tokens returned' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or inactive account' })
   login(@Body() dto: LoginDto) {

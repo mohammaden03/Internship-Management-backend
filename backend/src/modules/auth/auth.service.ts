@@ -95,13 +95,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const rawIdentifier = (
-      dto.identifier ||
-      dto.nationalCode ||
-      dto.studentNumber ||
-      dto.email ||
-      ''
-    ).trim();
+    const rawIdentifier = (dto.identifier || '').trim();
 
     if (!rawIdentifier) {
       throw new BadRequestException('شناسه ورود (کد ملی یا شماره دانشجویی) الزامی است.');
