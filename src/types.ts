@@ -10,7 +10,7 @@ export type DocumentType =
   | 'OTHER';
 
 export interface User {
-  id: string;
+  id: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -23,25 +23,25 @@ export interface User {
 }
 
 export interface Student {
-  id: string;
+  id: number;
   studentNumber: string;
   faculty: string;
   major: string;
   degreeLevel: string;
-  userId: string;
+  userId: number;
   user?: User;
 }
 
 export interface Professor {
-  id: string;
+  id: number;
   department: string;
   academicRank: string;
-  userId: string;
+  userId: number;
   user?: User;
 }
 
 export interface Company {
-  id: string;
+  id: number;
   name: string;
   industry: string;
   city: string;
@@ -53,10 +53,10 @@ export interface Company {
 }
 
 export interface InternshipRequest {
-  id: string;
-  studentId: string;
+  id: number;
+  studentId: number;
   student?: Student & { user?: User };
-  companyId: string;
+  companyId: number;
   company?: Company;
   title: string;
   description: string;
@@ -68,14 +68,14 @@ export interface InternshipRequest {
 }
 
 export interface Internship {
-  id: string;
-  studentId: string;
+  id: number;
+  studentId: number;
   student?: Student & { user?: User };
-  professorId: string;
+  professorId: number;
   professor?: Professor & { user?: User };
-  companyId: string;
+  companyId: number;
   company?: Company;
-  requestId: string;
+  requestId: number;
   startDate: string;
   endDate: string;
   progressPercentage: number;
@@ -86,8 +86,8 @@ export interface Internship {
 }
 
 export interface WeeklyReport {
-  id: string;
-  internshipId: string;
+  id: number;
+  internshipId: number;
   weekNumber: number;
   startDate: string;
   endDate: string;
@@ -101,8 +101,8 @@ export interface WeeklyReport {
 }
 
 export interface Document {
-  id: string;
-  internshipId: string;
+  id: number;
+  internshipId: number;
   fileName: string;
   filePath: string;
   documentType: DocumentType;
@@ -110,8 +110,8 @@ export interface Document {
 }
 
 export interface Evaluation {
-  id: string;
-  internshipId: string;
+  id: number;
+  internshipId: number;
   technicalSkill: number;
   responsibility: number;
   discipline: number;
@@ -123,8 +123,8 @@ export interface Evaluation {
 }
 
 export interface Notification {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   title: string;
   message: string;
   isRead: boolean;
@@ -132,8 +132,8 @@ export interface Notification {
 }
 
 export interface ActivityLog {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   user?: User;
   action: string;
   createdAt: string;

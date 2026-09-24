@@ -42,7 +42,7 @@ enum DocumentType {
 }
 
 model User {
-  id           String        @id @default(uuid())
+  id           Int           @id @default(autoincrement())
   firstName    String
   lastName     String
   email        String        @unique
@@ -64,12 +64,12 @@ model User {
 }
 
 model Student {
-  id            String              @id @default(uuid())
+  id            Int                 @id @default(autoincrement())
   studentNumber String              @unique
   faculty       String
   major         String
   degreeLevel   String
-  userId        String              @unique
+  userId        Int                 @unique
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   requests      InternshipRequest[]
@@ -79,10 +79,10 @@ model Student {
 }
 
 model Professor {
-  id           String        @id @default(uuid())
+  id           Int           @id @default(autoincrement())
   department   String
   academicRank String
-  userId       String        @unique
+  userId       Int           @unique
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   internships  Internship[]
@@ -91,7 +91,7 @@ model Professor {
 }
 
 model Company {
-  id              String              @id @default(uuid())
+  id              Int                 @id @default(autoincrement())
   name            String
   industry        String
   city            String
@@ -108,10 +108,10 @@ model Company {
 }
 
 model InternshipRequest {
-  id          String         @id @default(uuid())
-  studentId   String
+  id          Int            @id @default(autoincrement())
+  studentId   Int
   student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  companyId   String
+  companyId   Int
   company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
   title       String
   description String
@@ -127,14 +127,14 @@ model InternshipRequest {
 }
 
 model Internship {
-  id                 String           @id @default(uuid())
-  studentId          String
+  id                 Int              @id @default(autoincrement())
+  studentId          Int
   student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  professorId        String
+  professorId        Int
   professor          Professor        @relation(fields: [professorId], references: [id], onDelete: Restrict)
-  companyId          String
+  companyId          Int
   company            Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  requestId          String           @unique
+  requestId          Int              @unique
   request            InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
   startDate          DateTime
   endDate            DateTime
@@ -149,8 +149,8 @@ model Internship {
 }
 
 model WeeklyReport {
-  id               String       @id @default(uuid())
-  internshipId     String
+  id               Int          @id @default(autoincrement())
+  internshipId     Int
   internship       Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   weekNumber       Int
   startDate        DateTime
@@ -168,8 +168,8 @@ model WeeklyReport {
 }
 
 model Document {
-  id           String       @id @default(uuid())
-  internshipId String
+  id           Int          @id @default(autoincrement())
+  internshipId Int
   internship   Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   fileName     String
   filePath     String
@@ -180,8 +180,8 @@ model Document {
 }
 
 model Evaluation {
-  id              String     @id @default(uuid())
-  internshipId    String     @unique
+  id              Int        @id @default(autoincrement())
+  internshipId    Int        @unique
   internship      Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   technicalSkill  Float
   responsibility  Float
@@ -196,8 +196,8 @@ model Evaluation {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
+  id        Int      @id @default(autoincrement())
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
@@ -208,8 +208,8 @@ model Notification {
 }
 
 model ActivityLog {
-  id        String   @id @default(uuid())
-  userId    String
+  id        Int      @id @default(autoincrement())
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   createdAt DateTime @default(now())

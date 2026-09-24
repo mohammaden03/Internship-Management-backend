@@ -38,10 +38,10 @@ interface DatabaseExplorerProps {
   evaluations: Evaluation[];
   users: User[];
   activeRole: Role;
-  onApproveRequest: (requestId: string) => void;
-  onRejectRequest: (requestId: string) => void;
-  onApproveReport: (reportId: string, comment: string) => void;
-  onRejectReport: (reportId: string, comment: string) => void;
+  onApproveRequest: (requestId: number) => void;
+  onRejectRequest: (requestId: number) => void;
+  onApproveReport: (reportId: number, comment: string) => void;
+  onRejectReport: (reportId: number, comment: string) => void;
 }
 
 export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
@@ -65,10 +65,10 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const getUser = (userId: string) => users.find((u) => u.id === userId);
-  const getCompany = (compId: string) => companies.find((c) => c.id === compId);
-  const getStudent = (stId: string) => students.find((s) => s.id === stId);
-  const getProfessor = (profId: string) => professors.find((p) => p.id === profId);
+  const getUser = (userId: number) => users.find((u) => u.id === userId);
+  const getCompany = (compId: number) => companies.find((c) => c.id === compId);
+  const getStudent = (stId: number) => students.find((s) => s.id === stId);
+  const getProfessor = (profId: number) => professors.find((p) => p.id === profId);
 
   return (
     <div className="space-y-6 text-right" dir="rtl">

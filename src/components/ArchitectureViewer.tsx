@@ -63,7 +63,7 @@ enum DocumentType {
 }
 
 model User {
-  id           String        @id @default(uuid())
+  id           Int           @id @default(autoincrement())
   firstName    String        @map("first_name")
   lastName     String        @map("last_name")
   email        String        @unique
@@ -84,12 +84,12 @@ model User {
 }
 
 model Student {
-  id            String   @id @default(uuid())
+  id            Int      @id @default(autoincrement())
   studentNumber String   @unique @map("student_number")
   faculty       String
   major         String
   degreeLevel   String   @map("degree_level")
-  userId        String   @unique @map("user_id")
+  userId        Int      @unique @map("user_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -101,10 +101,10 @@ model Student {
 }
 
 model Professor {
-  id           String   @id @default(uuid())
+  id           Int      @id @default(autoincrement())
   department   String
   academicRank String   @map("academic_rank")
-  userId       String   @unique @map("user_id")
+  userId       Int      @unique @map("user_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -115,7 +115,7 @@ model Professor {
 }
 
 model Company {
-  id              String   @id @default(uuid())
+  id              Int      @id @default(autoincrement())
   name            String
   industry        String
   city            String
@@ -133,9 +133,9 @@ model Company {
 }
 
 model InternshipRequest {
-  id          String        @id @default(uuid())
-  studentId   String        @map("student_id")
-  companyId   String        @map("company_id")
+  id          Int           @id @default(autoincrement())
+  studentId   Int           @map("student_id")
+  companyId   Int           @map("company_id")
   title       String
   description String
   startDate   DateTime      @map("start_date")
@@ -153,11 +153,11 @@ model InternshipRequest {
 }
 
 model Internship {
-  id                 String           @id @default(uuid())
-  studentId          String           @map("student_id")
-  professorId        String           @map("professor_id")
-  companyId          String           @map("company_id")
-  requestId          String           @unique @map("request_id")
+  id                 Int              @id @default(autoincrement())
+  studentId          Int              @map("student_id")
+  professorId        Int              @map("professor_id")
+  companyId          Int              @map("company_id")
+  requestId          Int              @unique @map("request_id")
   startDate          DateTime         @map("start_date")
   endDate            DateTime         @map("end_date")
   progressPercentage Int              @default(0) @map("progress_percentage")
@@ -177,8 +177,8 @@ model Internship {
 }
 
 model WeeklyReport {
-  id               String       @id @default(uuid())
-  internshipId     String       @map("internship_id")
+  id               Int          @id @default(autoincrement())
+  internshipId     Int          @map("internship_id")
   weekNumber       Int          @map("week_number")
   startDate        DateTime     @map("start_date")
   endDate          DateTime     @map("end_date")
@@ -198,8 +198,8 @@ model WeeklyReport {
 }
 
 model Document {
-  id           String       @id @default(uuid())
-  internshipId String       @map("internship_id")
+  id           Int          @id @default(autoincrement())
+  internshipId Int          @map("internship_id")
   fileName     String       @map("file_name")
   filePath     String       @map("file_path")
   documentType DocumentType @map("document_type")
@@ -211,8 +211,8 @@ model Document {
 }
 
 model Evaluation {
-  id             String     @id @default(uuid())
-  internshipId   String     @unique @map("internship_id")
+  id             Int        @id @default(autoincrement())
+  internshipId   Int        @unique @map("internship_id")
   technicalSkill Float      @map("technical_skill")
   responsibility Float
   discipline     Float
@@ -229,8 +229,8 @@ model Evaluation {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
   title     String
   message   String
   isRead    Boolean  @default(false) @map("is_read")
@@ -242,8 +242,8 @@ model Notification {
 }
 
 model ActivityLog {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
   action    String
   createdAt DateTime @default(now()) @map("created_at")
 

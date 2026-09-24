@@ -54,9 +54,10 @@ export default function App() {
 
   // Automated notification creator
   const triggerNotification = (title: string, message: string) => {
+    const nextId = (notifications.length > 0 ? Math.max(...notifications.map((n) => n.id)) : 0) + 1;
     const newNotif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: activeRole === 'ADMIN' ? 'user-admin-1' : activeRole === 'PROFESSOR' ? 'user-prof-1' : 'user-stu-1',
+      id: nextId,
+      userId: activeRole === 'ADMIN' ? 1 : activeRole === 'PROFESSOR' ? 2 : 4,
       title,
       message,
       isRead: false,
@@ -67,9 +68,10 @@ export default function App() {
 
   // Automated audit logger
   const triggerActivityLog = (action: string) => {
+    const nextId = (activityLogs.length > 0 ? Math.max(...activityLogs.map((l) => l.id)) : 0) + 1;
     const newLog: ActivityLog = {
-      id: `log-${Date.now()}`,
-      userId: activeRole === 'ADMIN' ? 'user-admin-1' : activeRole === 'PROFESSOR' ? 'user-prof-1' : 'user-stu-1',
+      id: nextId,
+      userId: activeRole === 'ADMIN' ? 1 : activeRole === 'PROFESSOR' ? 2 : 4,
       action,
       createdAt: new Date().toISOString(),
     };
@@ -77,7 +79,7 @@ export default function App() {
   };
 
   // Request State Machine Transitions
-  const handleApproveRequest = (requestId: string) => {
+  const handleApproveRequest = (requestId: number) => {
     setRequests((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, status: 'APPROVED' } : r)),
     );
@@ -85,12 +87,13 @@ export default function App() {
     const req = requests.find((r) => r.id === requestId);
     const comp = companies.find((c) => c.id === req?.companyId);
 
-    // Auto-create active internship
+    // Auto-create active internship with auto-incrementing numeric ID
     if (req && !internships.some((i) => i.requestId === requestId)) {
+      const nextInternId = (internships.length > 0 ? Math.max(...internships.map((i) => i.id)) : 0) + 1;
       const newInternship: Internship = {
-        id: `ins-${Date.now().toString().slice(-4)}`,
+        id: nextInternId,
         studentId: req.studentId,
-        professorId: 'prof-1',
+        professorId: 1,
         companyId: req.companyId,
         requestId: req.id,
         startDate: req.startDate,
@@ -108,7 +111,7 @@ export default function App() {
     triggerActivityLog(`تأیید درخواست کارآموزی شماره ${requestId} توسط مدیر آموزش`);
   };
 
-  const handleRejectRequest = (requestId: string) => {
+  const handleRejectRequest = (requestId: number) => {
     setRequests((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, status: 'REJECTED' } : r)),
     );
@@ -117,24 +120,24 @@ export default function App() {
   };
 
   // Weekly Report State Machine Transitions
-  const handleApproveReport = (reportId: string, comment: string) => {
+  const handleApproveReport = (reportId: number, comment: string) => {
     setReports((prev) =>
       prev.map((r) =>
         r.id === reportId ? { ...r, status: 'APPROVED', professorComment: comment } : r,
       ),
     );
     triggerNotification('تأیید گزارش هفتگی', `گزارش هفتگی شماره ${reportId} توسط استاد ناظر تأیید گردید.`);
-    triggerActivityLog(`تأیید گزارش هفتگی ${reportId} توسط استاد ناظر`);
+    triggerActivityLog(`تأیید گزارش هفتگی شماره ${reportId} توسط استاد ناظر`);
   };
 
-  const handleRejectReport = (reportId: string, comment: string) => {
+  const handleRejectReport = (reportId: number, comment: string) => {
     setReports((prev) =>
       prev.map((r) =>
         r.id === reportId ? { ...r, status: 'REJECTED', professorComment: comment } : r,
       ),
     );
     triggerNotification('عدم تأیید گزارش هفتگی', `گزارش هفتگی شماره ${reportId} نیاز به بازبینی دارد.`);
-    triggerActivityLog(`رد گزارش هفتگی ${reportId} جهت اصلاح`);
+    triggerActivityLog(`رد گزارش هفتگی شماره ${reportId} جهت اصلاح`);
   };
 
   const handleMarkAllRead = () => {

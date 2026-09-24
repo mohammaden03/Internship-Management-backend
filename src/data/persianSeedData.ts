@@ -6,16 +6,15 @@ import {
   InternshipRequest,
   Internship,
   WeeklyReport,
-  Document,
   Evaluation,
   Notification,
   ActivityLog,
 } from '../types';
 
 export const initialUsers: User[] = [
-  // Admin
+  // Admin (id: 1)
   {
-    id: 'user-admin-1',
+    id: 1,
     firstName: 'علیرضا',
     lastName: 'حسینی',
     email: 'internship_office@semnan.ac.ir',
@@ -26,9 +25,9 @@ export const initialUsers: User[] = [
     createdAt: '2024-06-01T08:00:00.000Z',
     updatedAt: '2024-06-01T08:00:00.000Z',
   },
-  // Professors
+  // Professors (id: 2 and 3)
   {
-    id: 'user-prof-1',
+    id: 2,
     firstName: 'محمد',
     lastName: 'رضایی',
     email: 'rezaei@semnan.ac.ir',
@@ -40,7 +39,7 @@ export const initialUsers: User[] = [
     updatedAt: '2024-06-01T08:30:00.000Z',
   },
   {
-    id: 'user-prof-2',
+    id: 3,
     firstName: 'سارا',
     lastName: 'احمدی',
     email: 'ahmadi_s@semnan.ac.ir',
@@ -51,9 +50,9 @@ export const initialUsers: User[] = [
     createdAt: '2024-06-01T09:00:00.000Z',
     updatedAt: '2024-06-01T09:00:00.000Z',
   },
-  // Students
+  // Students (id: 4, 5, 6, 7)
   {
-    id: 'user-stu-1',
+    id: 4,
     firstName: 'محمد',
     lastName: 'احمدی',
     email: 'm.ahmadi@semnan.ac.ir',
@@ -65,7 +64,7 @@ export const initialUsers: User[] = [
     updatedAt: '2024-06-02T10:00:00.000Z',
   },
   {
-    id: 'user-stu-2',
+    id: 5,
     firstName: 'علی',
     lastName: 'رضایی',
     email: 'a.rezaei@semnan.ac.ir',
@@ -77,7 +76,7 @@ export const initialUsers: User[] = [
     updatedAt: '2024-06-02T10:05:00.000Z',
   },
   {
-    id: 'user-stu-3',
+    id: 6,
     firstName: 'سارا',
     lastName: 'محمدی',
     email: 's.mohammadi@semnan.ac.ir',
@@ -89,7 +88,7 @@ export const initialUsers: User[] = [
     updatedAt: '2024-06-02T10:10:00.000Z',
   },
   {
-    id: 'user-stu-4',
+    id: 7,
     firstName: 'مهدی',
     lastName: 'کریمی',
     email: 'm.karimi@semnan.ac.ir',
@@ -104,57 +103,57 @@ export const initialUsers: User[] = [
 
 export const initialProfessors: Professor[] = [
   {
-    id: 'prof-1',
+    id: 1,
     department: 'مهندسی کامپیوتر',
     academicRank: 'دانشیار',
-    userId: 'user-prof-1',
+    userId: 2,
   },
   {
-    id: 'prof-2',
+    id: 2,
     department: 'مهندسی صنایع',
     academicRank: 'استادیار',
-    userId: 'user-prof-2',
+    userId: 3,
   },
 ];
 
 export const initialStudents: Student[] = [
   {
-    id: 'stu-1',
+    id: 1,
     studentNumber: '400105432',
     faculty: 'مهندسی کامپیوتر',
     major: 'مهندسی نرم‌افزار',
     degreeLevel: 'کارشناسی',
-    userId: 'user-stu-1',
+    userId: 4,
   },
   {
-    id: 'stu-2',
+    id: 2,
     studentNumber: '400108921',
     faculty: 'مهندسی کامپیوتر',
     major: 'هوش مصنوعی و داده',
     degreeLevel: 'کارشناسی',
-    userId: 'user-stu-2',
+    userId: 5,
   },
   {
-    id: 'stu-3',
+    id: 3,
     studentNumber: '400201456',
     faculty: 'مهندسی صنایع',
     major: 'تحلیل سیستم‌ها',
     degreeLevel: 'کارشناسی',
-    userId: 'user-stu-3',
+    userId: 6,
   },
   {
-    id: 'stu-4',
+    id: 4,
     studentNumber: '400305882',
     faculty: 'مهندسی کامپیوتر',
     major: 'فناوری اطلاعات',
     degreeLevel: 'کارشناسی',
-    userId: 'user-stu-4',
+    userId: 7,
   },
 ];
 
 export const initialCompanies: Company[] = [
   {
-    id: 'comp-1',
+    id: 1,
     name: 'شرکت فناوران هوشمند',
     industry: 'توسعه نرم‌افزارهای ابری و هوش مصنوعی',
     city: 'تهران',
@@ -165,7 +164,7 @@ export const initialCompanies: Company[] = [
     createdAt: '1395',
   },
   {
-    id: 'comp-2',
+    id: 2,
     name: 'شرکت توسعه نرم افزار پارس',
     industry: 'سیستم‌های بانکی و پرداخت الکترونیک',
     city: 'تهران',
@@ -176,7 +175,7 @@ export const initialCompanies: Company[] = [
     createdAt: '1390',
   },
   {
-    id: 'comp-3',
+    id: 3,
     name: 'شرکت فناوری اطلاعات آریا',
     industry: 'امنیت سایبری و زیرساخت شبکه',
     city: 'تهران',
@@ -187,7 +186,7 @@ export const initialCompanies: Company[] = [
     createdAt: '1398',
   },
   {
-    id: 'comp-4',
+    id: 4,
     name: 'هلدینگ داده‌ورزان نوین',
     industry: 'طراحی داده‌محور و سامانه‌های سازمانی',
     city: 'سمنان',
@@ -201,9 +200,9 @@ export const initialCompanies: Company[] = [
 
 export const initialRequests: InternshipRequest[] = [
   {
-    id: 'req-1',
-    studentId: 'stu-1',
-    companyId: 'comp-1',
+    id: 1,
+    studentId: 1,
+    companyId: 1,
     title: 'توسعه بک‌اند و سرویس‌های میکروسرویس',
     description: 'درخواست رسمی کارآموزی تابستانه جهت گذراندن دوره ۲۴۰ ساعته در شرکت فناوران هوشمند در زمینه توسعه بک‌اند.',
     startDate: '2024-06-21T00:00:00.000Z',
@@ -213,9 +212,9 @@ export const initialRequests: InternshipRequest[] = [
     createdAt: '2024-06-04T10:00:00.000Z',
   },
   {
-    id: 'req-2',
-    studentId: 'stu-2',
-    companyId: 'comp-4',
+    id: 2,
+    studentId: 2,
+    companyId: 4,
     title: 'طراحی رابط کاربری و تحلیل تجربه کاربری',
     description: 'درخواست رسمی کارآموزی در هلدینگ داده‌ورزان نوین برای زمینه طراحی رابط کاربری و تحلیل تجربه کاربری.',
     startDate: '2024-09-22T00:00:00.000Z',
@@ -225,9 +224,9 @@ export const initialRequests: InternshipRequest[] = [
     createdAt: '2024-09-09T14:30:00.000Z',
   },
   {
-    id: 'req-3',
-    studentId: 'stu-3',
-    companyId: 'comp-2',
+    id: 3,
+    studentId: 3,
+    companyId: 2,
     title: 'تحلیل داده و کنترل فرآیند تولید',
     description: 'درخواست رسمی کارآموزی در شرکت توسعه نرم‌افزار پارس جهت تحلیل داده و کنترل فرآیند تولید.',
     startDate: '2024-09-26T00:00:00.000Z',
@@ -240,44 +239,44 @@ export const initialRequests: InternshipRequest[] = [
 
 export const initialInternships: Internship[] = [
   {
-    id: 'intern-1',
-    studentId: 'stu-1',
-    professorId: 'prof-1',
-    companyId: 'comp-1',
-    requestId: 'req-1',
+    id: 1,
+    studentId: 1,
+    professorId: 1,
+    companyId: 1,
+    requestId: 1,
     startDate: '2024-06-21T00:00:00.000Z',
     endDate: '2024-09-21T00:00:00.000Z',
     progressPercentage: 75,
     status: 'ACTIVE',
   },
   {
-    id: 'intern-2',
-    studentId: 'stu-2',
-    professorId: 'prof-1',
-    companyId: 'comp-2',
-    requestId: 'req-intern-2',
+    id: 2,
+    studentId: 2,
+    professorId: 1,
+    companyId: 2,
+    requestId: 4,
     startDate: '2024-06-30T00:00:00.000Z',
     endDate: '2024-10-01T00:00:00.000Z',
     progressPercentage: 100,
     status: 'ACTIVE',
   },
   {
-    id: 'intern-3',
-    studentId: 'stu-3',
-    professorId: 'prof-2',
-    companyId: 'comp-3',
-    requestId: 'req-intern-3',
+    id: 3,
+    studentId: 3,
+    professorId: 2,
+    companyId: 3,
+    requestId: 5,
     startDate: '2024-07-05T00:00:00.000Z',
     endDate: '2024-10-05T00:00:00.000Z',
     progressPercentage: 50,
     status: 'ACTIVE',
   },
   {
-    id: 'intern-4',
-    studentId: 'stu-4',
-    professorId: 'prof-1',
-    companyId: 'comp-1',
-    requestId: 'req-intern-4',
+    id: 4,
+    studentId: 4,
+    professorId: 1,
+    companyId: 1,
+    requestId: 6,
     startDate: '2024-06-04T00:00:00.000Z',
     endDate: '2024-09-04T00:00:00.000Z',
     progressPercentage: 100,
@@ -287,8 +286,8 @@ export const initialInternships: Internship[] = [
 
 export const initialReports: WeeklyReport[] = [
   {
-    id: 'rep-1',
-    internshipId: 'intern-1',
+    id: 1,
+    internshipId: 1,
     weekNumber: 1,
     startDate: '2024-06-21T00:00:00.000Z',
     endDate: '2024-06-27T00:00:00.000Z',
@@ -301,8 +300,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-06-28T09:00:00.000Z',
   },
   {
-    id: 'rep-2',
-    internshipId: 'intern-1',
+    id: 2,
+    internshipId: 1,
     weekNumber: 2,
     startDate: '2024-06-28T00:00:00.000Z',
     endDate: '2024-07-04T00:00:00.000Z',
@@ -315,8 +314,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-07-05T10:00:00.000Z',
   },
   {
-    id: 'rep-3',
-    internshipId: 'intern-1',
+    id: 3,
+    internshipId: 1,
     weekNumber: 3,
     startDate: '2024-07-05T00:00:00.000Z',
     endDate: '2024-07-11T00:00:00.000Z',
@@ -329,8 +328,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-07-12T11:00:00.000Z',
   },
   {
-    id: 'rep-4',
-    internshipId: 'intern-1',
+    id: 4,
+    internshipId: 1,
     weekNumber: 4,
     startDate: '2024-07-12T00:00:00.000Z',
     endDate: '2024-07-18T00:00:00.000Z',
@@ -343,8 +342,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-07-19T12:00:00.000Z',
   },
   {
-    id: 'rep-5',
-    internshipId: 'intern-1',
+    id: 5,
+    internshipId: 1,
     weekNumber: 5,
     startDate: '2024-07-19T00:00:00.000Z',
     endDate: '2024-07-25T00:00:00.000Z',
@@ -357,8 +356,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-07-26T13:00:00.000Z',
   },
   {
-    id: 'rep-6',
-    internshipId: 'intern-1',
+    id: 6,
+    internshipId: 1,
     weekNumber: 6,
     startDate: '2024-07-26T00:00:00.000Z',
     endDate: '2024-08-01T00:00:00.000Z',
@@ -371,8 +370,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-08-02T14:00:00.000Z',
   },
   {
-    id: 'rep-7',
-    internshipId: 'intern-1',
+    id: 7,
+    internshipId: 1,
     weekNumber: 7,
     startDate: '2024-08-02T00:00:00.000Z',
     endDate: '2024-08-08T00:00:00.000Z',
@@ -385,8 +384,8 @@ export const initialReports: WeeklyReport[] = [
     createdAt: '2024-08-09T15:00:00.000Z',
   },
   {
-    id: 'rep-8',
-    internshipId: 'intern-3',
+    id: 8,
+    internshipId: 3,
     weekNumber: 5,
     startDate: '2024-08-04T00:00:00.000Z',
     endDate: '2024-08-10T00:00:00.000Z',
@@ -402,8 +401,8 @@ export const initialReports: WeeklyReport[] = [
 
 export const initialEvaluations: Evaluation[] = [
   {
-    id: 'eval-1',
-    internshipId: 'intern-2',
+    id: 1,
+    internshipId: 2,
     technicalSkill: 19.5,
     responsibility: 19.0,
     discipline: 19.5,
@@ -414,8 +413,8 @@ export const initialEvaluations: Evaluation[] = [
     createdAt: '2024-10-02T10:00:00.000Z',
   },
   {
-    id: 'eval-2',
-    internshipId: 'intern-4',
+    id: 2,
+    internshipId: 4,
     technicalSkill: 20.0,
     responsibility: 20.0,
     discipline: 20.0,
@@ -429,40 +428,40 @@ export const initialEvaluations: Evaluation[] = [
 
 export const initialNotifications: Notification[] = [
   {
-    id: 'notif-1',
-    userId: 'user-stu-1',
+    id: 1,
+    userId: 4,
     title: 'تایید گزارش هفتگی شماره ۶',
     message: 'گزارش هفتگی شماره ۶ شما توسط دکتر محمد رضایی بررسی و با نظر مثبت تایید شد.',
     isRead: false,
     createdAt: '1403/05/15 - 10:30',
   },
   {
-    id: 'notif-2',
-    userId: 'user-stu-1',
+    id: 2,
+    userId: 4,
     title: 'ثبت یادآوری: ارسال گزارش شماره ۷',
     message: 'مهلت ارسال گزارش کارآموزی هفته هفتم تا پایان روز جمعه می‌باشد.',
     isRead: true,
     createdAt: '1403/05/18 - 14:00',
   },
   {
-    id: 'notif-3',
-    userId: 'user-prof-1',
+    id: 3,
+    userId: 2,
     title: 'گزارش هفتگی جدید جهت بررسی',
     message: 'دانشجو محمد احمدی گزارش هفتگی شماره ۷ را جهت بازبینی و ثبت بازخورد ارسال نموده است.',
     isRead: false,
     createdAt: '1403/05/20 - 11:15',
   },
   {
-    id: 'notif-4',
-    userId: 'user-prof-1',
+    id: 4,
+    userId: 2,
     title: 'دانشجو در انتظار ارزیابی نهایی',
     message: 'دوره کارآموزی دانشجو علی رضایی تکمیل شده و منتظر تکمیل فرم نمره و ارزیابی استاد است.',
     isRead: false,
     createdAt: '1403/06/10 - 09:00',
   },
   {
-    id: 'notif-5',
-    userId: 'user-admin-1',
+    id: 5,
+    userId: 1,
     title: 'درخواست کارآموزی جدید ثبت شد',
     message: 'درخواست کارآموزی جدید توسط دانشجویان در سامانه به ثبت رسید.',
     isRead: false,
@@ -472,38 +471,38 @@ export const initialNotifications: Notification[] = [
 
 export const initialActivityLogs: ActivityLog[] = [
   {
-    id: 'log-1',
-    userId: 'user-admin-1',
+    id: 1,
+    userId: 1,
     action: 'ورود مهندس حسینی (مدیر اداره کارآموزی) به سامانه جامع دانشگاه',
     createdAt: '2024-06-01T08:05:00.000Z',
   },
   {
-    id: 'log-2',
-    userId: 'user-stu-1',
+    id: 2,
+    userId: 4,
     action: 'ثبت درخواست کارآموزی در شرکت فناوران هوشمند توسط محمد احمدی',
     createdAt: '2024-06-04T10:02:00.000Z',
   },
   {
-    id: 'log-3',
-    userId: 'user-admin-1',
-    action: 'تأیید درخواست کارآموزی شماره req-1 و تخصیص دکتر محمد رضایی به عنوان استاد ناظر',
+    id: 3,
+    userId: 1,
+    action: 'تأیید درخواست کارآموزی شماره ۱ و تخصیص دکتر محمد رضایی به عنوان استاد ناظر',
     createdAt: '2024-06-05T11:00:00.000Z',
   },
   {
-    id: 'log-4',
-    userId: 'user-stu-1',
+    id: 4,
+    userId: 4,
     action: 'ارسال گزارش هفتگی شماره ۶ کارآموزی',
     createdAt: '2024-08-02T14:05:00.000Z',
   },
   {
-    id: 'log-5',
-    userId: 'user-prof-1',
+    id: 5,
+    userId: 2,
     action: 'بررسی و تأیید گزارش هفتگی شماره ۶ دانشجو محمد احمدی',
     createdAt: '2024-08-05T10:30:00.000Z',
   },
   {
-    id: 'log-6',
-    userId: 'user-stu-4',
+    id: 6,
+    userId: 7,
     action: 'پایان موفقیت‌آمیز دوره کارآموزی در شرکت فناوران هوشمند با نمره ۲۰',
     createdAt: '2024-09-05T12:15:00.000Z',
   },
