@@ -88,7 +88,7 @@ Production-ready NestJS Backend with:
     customSiteTitle: 'University Internship API Docs',
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT;
   await app.listen(port, '0.0.0.0');
 
   logger.log(`=======================================================`);
