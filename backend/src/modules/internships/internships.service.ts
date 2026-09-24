@@ -55,12 +55,12 @@ export class InternshipsService {
         include: {
           student: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true } },
+              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
             },
           },
           professor: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true } },
+              user: { select: { firstName: true, lastName: true, email: true, role: true } },
             },
           },
           company: true,
@@ -97,7 +97,7 @@ export class InternshipsService {
         company: true,
         professor: {
           include: {
-            user: { select: { firstName: true, lastName: true, email: true } },
+            user: { select: { firstName: true, lastName: true, email: true, role: true } },
           },
         },
         weeklyReports: { orderBy: { weekNumber: 'asc' } },
@@ -126,7 +126,7 @@ export class InternshipsService {
         include: {
           student: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true } },
+              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
             },
           },
           company: true,
@@ -156,12 +156,12 @@ export class InternshipsService {
       include: {
         student: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
+            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
           },
         },
         professor: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true } },
+            user: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
           },
         },
         company: true,

@@ -92,7 +92,7 @@ export class InternshipRequestsService {
         include: {
           student: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true } },
+              user: { select: { firstName: true, lastName: true, email: true, role: true } },
             },
           },
           company: true,
@@ -137,7 +137,7 @@ export class InternshipRequestsService {
           internship: {
             include: {
               professor: {
-                include: { user: { select: { firstName: true, lastName: true, email: true } } },
+                include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } },
               },
             },
           },
@@ -164,14 +164,14 @@ export class InternshipRequestsService {
       include: {
         student: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
+            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
           },
         },
         company: true,
         internship: {
           include: {
             professor: {
-              include: { user: { select: { firstName: true, lastName: true, email: true } } },
+              include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } },
             },
           },
         },

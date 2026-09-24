@@ -69,6 +69,7 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
           accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMSIsIm5hdGlvbmFsQ29kZSI6IjAwMTIzNDU2NzgiLCJyb2xlIjoiQURNSU4ifQ...',
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh_token_payload...',
           tokenType: 'Bearer',
+          role: activeRole,
           user: {
             id: 'usr-1',
             nationalCode: activeRole === 'ADMIN' ? '0012345678' : activeRole === 'PROFESSOR' ? '0010000001' : '0020000001',
@@ -105,6 +106,8 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
         data: {
           accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          tokenType: 'Bearer',
+          role: 'STUDENT',
           user: {
             id: 'usr-new-88',
             nationalCode: '0029988776',
@@ -136,7 +139,7 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
               faculty: 'دانشکده مهندسی کامپیوتر',
               major: 'مهندسی نرم‌افزار',
               degreeLevel: 'کارشناسی',
-              user: { firstName: 'محمد', lastName: 'رضایی', email: 'm.rezaei@student.ac.ir' },
+              user: { firstName: 'محمد', lastName: 'رضایی', email: 'm.rezaei@student.ac.ir', role: 'STUDENT' },
             },
             {
               id: 'st-2',
@@ -144,7 +147,7 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
               faculty: 'دانشکده مهندسی کامپیوتر',
               major: 'فناوری اطلاعات و شبکه',
               degreeLevel: 'کارشناسی',
-              user: { firstName: 'سارا', lastName: 'علوی', email: 's.alavi@student.ac.ir' },
+              user: { firstName: 'سارا', lastName: 'علوی', email: 's.alavi@student.ac.ir', role: 'STUDENT' },
             },
           ],
           meta: { totalItems: 10, itemCount: 2, itemsPerPage: 10, totalPages: 1, currentPage: 1 },
@@ -167,7 +170,7 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
           faculty: 'دانشکده مهندسی کامپیوتر',
           major: 'مهندسی نرم‌افزار',
           degreeLevel: 'کارشناسی',
-          user: { firstName: 'محمد', lastName: 'رضایی', email: 'm.rezaei@student.ac.ir', phoneNumber: '09351000001' },
+          user: { firstName: 'محمد', lastName: 'رضایی', email: 'm.rezaei@student.ac.ir', phoneNumber: '09351000001', role: 'STUDENT' },
         },
       },
     },
@@ -190,7 +193,7 @@ export const SwaggerTester: React.FC<SwaggerTesterProps> = ({ activeRole }) => {
               startDate: '2026-07-01T00:00:00.000Z',
               progressPercentage: 45,
               status: 'ACTIVE',
-              student: { studentNumber: '99123401', user: { firstName: 'محمد', lastName: 'رضایی' } },
+              student: { studentNumber: '99123401', user: { firstName: 'محمد', lastName: 'رضایی', role: 'STUDENT' } },
               company: { name: 'دیجی‌کالا', supervisorName: 'مهندس سعید پورعلی' },
             },
           ],

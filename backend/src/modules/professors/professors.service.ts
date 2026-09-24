@@ -30,6 +30,7 @@ export class ProfessorsService {
             lastName: true,
             email: true,
             phoneNumber: true,
+            role: true,
           },
         },
       },
@@ -66,6 +67,7 @@ export class ProfessorsService {
               lastName: true,
               email: true,
               phoneNumber: true,
+              role: true,
               isActive: true,
             },
           },
@@ -100,6 +102,7 @@ export class ProfessorsService {
             lastName: true,
             email: true,
             phoneNumber: true,
+            role: true,
             isActive: true,
           },
         },
@@ -107,7 +110,7 @@ export class ProfessorsService {
           include: {
             student: {
               include: {
-                user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true } },
+                user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
               },
             },
             company: true,
@@ -152,6 +155,7 @@ export class ProfessorsService {
                   lastName: true,
                   email: true,
                   phoneNumber: true,
+                  role: true,
                 },
               },
             },
@@ -189,7 +193,7 @@ export class ProfessorsService {
       where: { id },
       data: dto,
       include: {
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, role: true } },
       },
     });
   }

@@ -37,6 +37,7 @@ export class StudentsService {
             lastName: true,
             email: true,
             phoneNumber: true,
+            role: true,
           },
         },
       },
@@ -74,6 +75,7 @@ export class StudentsService {
               lastName: true,
               email: true,
               phoneNumber: true,
+              role: true,
               isActive: true,
             },
           },
@@ -113,6 +115,7 @@ export class StudentsService {
             lastName: true,
             email: true,
             phoneNumber: true,
+            role: true,
             isActive: true,
           },
         },
@@ -124,7 +127,7 @@ export class StudentsService {
             company: true,
             professor: {
               include: {
-                user: { select: { firstName: true, lastName: true, email: true } },
+                user: { select: { firstName: true, lastName: true, email: true, role: true } },
               },
             },
             weeklyReports: true,
@@ -153,6 +156,7 @@ export class StudentsService {
             lastName: true,
             email: true,
             phoneNumber: true,
+            role: true,
           },
         },
         internships: {
@@ -160,7 +164,7 @@ export class StudentsService {
             company: true,
             professor: {
               include: {
-                user: { select: { firstName: true, lastName: true, email: true } },
+                user: { select: { firstName: true, lastName: true, email: true, role: true } },
               },
             },
             weeklyReports: { orderBy: { weekNumber: 'asc' } },
@@ -183,6 +187,7 @@ export class StudentsService {
             firstName: true,
             lastName: true,
             email: true,
+            role: true,
           },
         },
       },

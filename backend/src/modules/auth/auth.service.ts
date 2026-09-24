@@ -262,6 +262,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       tokenType: 'Bearer',
+      role: user.role,
       user: {
         id: user.id,
         firstName: user.firstName,
