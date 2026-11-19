@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 
 @Catch()
@@ -30,6 +31,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = (res as any).message || message;
         error = (res as any).error || error;
       }
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        error = 'Conflict';
+        message = 'A record with the provided unique value already exists';
+      } else if (exception.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+        error = 'Not Found';
+        message = 'Requested record was not found';
+      } else if (exception.code === 'P2003') {
+        status = HttpStatus.BAD_REQUEST;
+        error = 'Bad Request';
+        message = 'Invalid foreign key reference';
+      } else {
+        status = HttpStatus.BAD_REQUEST;
+        error = 'Database Request Error';
+        message = exception.message;
+      }
+    } else if (exception instanceof Prisma.PrismaClientValidationError) {
+      status = HttpStatus.BAD_REQUEST;
+      error = 'Bad Request';
+      message = 'Invalid query or input payload';
     } else if (exception instanceof Error) {
       message = exception.message;
       error = exception.name;

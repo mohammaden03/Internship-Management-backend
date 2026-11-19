@@ -2,7 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { join } from 'path';
+import { dirname, isAbsolute, join, resolve } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
@@ -10,7 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Global API Route Prefix
-  const globalPrefix = 'api';
+  const globalPrefix = (process.env.API_PREFIX || 'api').replace(/^\/+|\/+$/g, '');
   app.setGlobalPrefix(globalPrefix);
 
   // Enable CORS
@@ -32,25 +33,34 @@ async function bootstrap() {
     }),
   );
 
-  // Static Assets for uploaded documents
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
+  // Static Assets for uploaded documents aligned with API prefix (/api/uploads/...)
+  const configuredUploadDest = process.env.UPLOAD_DESTINATION || './uploads/documents';
+  const resolvedUploadDest = isAbsolute(configuredUploadDest)
+    ? configuredUploadDest
+    : resolve(process.cwd(), configuredUploadDest);
+  if (!existsSync(resolvedUploadDest)) {
+    mkdirSync(resolvedUploadDest, { recursive: true });
+  }
+  const uploadsRoot = dirname(resolvedUploadDest);
+  app.useStaticAssets(uploadsRoot, {
+    prefix: `/${globalPrefix}/uploads/`,
   });
 
   // Swagger OpenAPI 3.0 Documentation Setup
   const config = new DocumentBuilder()
-    .setTitle('University Internship Management System API')
+    .setTitle(process.env.APP_NAME || 'University Internship Management System API')
     .setDescription(
-      `سامانه جامع و یکپارچه مدیریت کارآموزی دانشگاه
-      
+      process.env.APP_DESCRIPTION ||
+        `سامانه جامع و یکپارچه مدیریت کارآموزی دانشگاه
+
 Production-ready NestJS Backend with:
 - JWT Authentication & Refresh Tokens
 - Role-Based Access Control (ADMIN, PROFESSOR, STUDENT)
-- PostgreSQL with Prisma ORM
-- File Uploads with Multer & MIME validation
+- PostgreSQL with Prisma ORM and Auto-increment Integer IDs
+- File Uploads with Multer & env-driven MIME/size validation
 - Automated Notifications & Audit Activity Logs
-- Pagination, Search, Sorting, and Status Filtering
-- Seeded with authentic Persian academic & corporate entities`,
+- Dashboard KPIs & Persistent System Settings
+- Pagination, Search, Allow-listed Sorting, and Validated Status Filtering`,
     )
     .setVersion('1.0.0')
     .addBearerAuth(
@@ -64,8 +74,11 @@ Production-ready NestJS Backend with:
       },
       'JWT-auth',
     )
-    .addTag('Auth', 'Authentication, JWT login, registration, refresh-token and logout')
-    .addTag('Users', 'User management, profile fetching, password changes and admin controls')
+    .addTag('Health', 'Service liveness check')
+    .addTag('Auth', 'Authentication, JWT login, registration, refresh, forgot-password, me and logout')
+    .addTag('Dashboard', 'Admin system statistics and counts')
+    .addTag('Settings', 'Persistent system-wide internship settings')
+    .addTag('Users', 'User management, profile fetching and admin controls')
     .addTag('Students', 'Student academic profiles, majors, degree levels and personal dashboard')
     .addTag('Professors', 'Professor profiles, departments, academic ranks and assigned students')
     .addTag('Companies', 'Hosting corporate partners, industries, cities and company supervisors')
@@ -79,7 +92,7 @@ Production-ready NestJS Backend with:
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup(`${globalPrefix}/docs`, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
       tagsSorter: 'alpha',
@@ -88,12 +101,13 @@ Production-ready NestJS Backend with:
     customSiteTitle: 'University Internship API Docs',
   });
 
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT || 3000);
   await app.listen(port, '0.0.0.0');
 
   logger.log(`=======================================================`);
   logger.log(`🚀 NestJS Backend running at: http://localhost:${port}/${globalPrefix}`);
-  logger.log(`📚 Swagger Documentation at: http://localhost:${port}/api/docs`);
+  logger.log(`📚 Swagger Documentation at: http://localhost:${port}/${globalPrefix}/docs`);
+  logger.log(`💚 Health Check at: http://localhost:${port}/${globalPrefix}/health`);
   logger.log(`=======================================================`);
 }
 

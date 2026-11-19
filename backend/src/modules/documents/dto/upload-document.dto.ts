@@ -1,12 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DocumentType } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsNotEmpty, Min } from 'class-validator';
 
 export class UploadDocumentDto {
-  @ApiProperty({ example: 'uuid-internship-id' })
-  @IsUUID()
-  @IsNotEmpty()
-  internshipId: string;
+  @ApiProperty({ example: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  internshipId: number;
 
   @ApiProperty({
     enum: DocumentType,

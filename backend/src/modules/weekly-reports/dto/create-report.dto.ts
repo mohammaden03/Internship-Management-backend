@@ -1,14 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateWeeklyReportDto {
-  @ApiProperty({ example: 'uuid-internship-id' })
-  @IsUUID()
-  @IsNotEmpty()
-  internshipId: string;
+  @ApiProperty({ example: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  internshipId: number;
 
   @ApiProperty({ example: 1, minimum: 1 })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   weekNumber: number;

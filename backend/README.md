@@ -1,114 +1,108 @@
 # سامانه جامع مدیریت کارآموزی دانشگاه (University Internship Management System)
 
-سیستم یکپارچه و مدرن تحت وب برای دیجیتال‌سازی و خودکارسازی فرآیندهای کارآموزی دانشگاهی، توسعه‌یافته با فریم‌ورک **NestJS** و پایگاه‌داده **PostgreSQL** با استفاده از **Prisma ORM**.
+بک‌اند کامل و ماژولار سامانه مدیریت کارآموزی دانشگاه، توسعه‌یافته با **NestJS**، **PostgreSQL** و **Prisma ORM** با شناسه‌های تماماً عددی (`Int @default(autoincrement())`).
 
 ---
 
-## 🌟 ویژگی‌های کلیدی (Key Features)
+## ویژگی‌های کلیدی (Key Features)
 
-- **معماری تمیز و ماژولار (Clean Modular Architecture)**: تفکیک منطق به ۱۲ ماژول کاملاً مجزا و قابل نگهداری.
-- **احراز هویت دومرحله‌ای با توکن (JWT Authentication & Refresh Token)**: تولید توکن‌های دسترسی و توکن بازسازی با رمزنگاری `bcrypt`.
-- **کنترل دسترسی نقش‌محور (Role-Based Access Control - RBAC)**: گاردهای اختصاصی برای ۳ نقش اصلی:
-  - `ADMIN` (مدیر کل با دسترسی کامل به تمامی بخش‌ها)
-  - `PROFESSOR` (استاد ناظر جهت ارزیابی، نظارت و تأیید گزارش‌های هفتگی و نمره‌دهی)
-  - `STUDENT` (دانشجو جهت ثبت درخواست کارآموزی، ارسال گزارش‌های هفتگی و بارگذاری مدارک)
-- **مستندسازی جامع سواگر (Swagger OpenAPI 3.0)**: مستندسازی تمامی اندپوینت‌ها همراه با امکان تست تعاملی و دکمه اعتبارسنجی Bearer Token.
-- **بارگذاری امن فایل با مولتر (Multer File Upload)**: اعتبارسنجی نوع فایل (PDF, Word, Images)، محدودیت حجم (10MB)، ذخیره‌سازی محلی و تولید لینک دانلود.
-- **نوتیفیکیشن‌های خودکار (Automated Notifications)**: ارسال اعلان لحظه‌ای هنگام تأیید/رد درخواست، ارسال گزارش هفتگی، تأیید گزارش و ثبت نمره نهایی.
-- **لاگ فعالیت‌ها و ردپای امنیتی (Audit Activity Logs)**: ثبت دقیق کلیه رویدادهای حساس (ورود، ثبت درخواست، بررسی گزارش و ارزیابی).
-- **صفحه‌بندی، فیلتر، مرتب‌سازی و جستجو (Pagination, Search, Sorting, Filtering)** روی کلیه منابع.
-- **داده‌های اولیه آزمایشی فارسی (Realistic Persian Seed Data)**: شامل ۱۰ دانشجو، ۵ استاد، ۱۰ شرکت مطرح (دیجی‌کالا، اسنپ، کافه‌بازار، مپنا و...)، ۲۰ درخواست کارآموزی، ۱۵ دوره فعال و ۵۰ گزارش هفتگی.
-
----
-
-## 🗂️ ساختار ماژولار (Module Structure)
-
-```text
-backend/
-├── Dockerfile
-├── docker-compose.yml
-├── nest-cli.json
-├── tsconfig.json
-├── package.json
-├── prisma/
-│   ├── schema.prisma        # اسکیمای کامل دیتابیس پستگرس با انتیتی‌ها و روابط
-│   └── seed.ts              # بذرپاشی داده‌های واقع‌گرایانه فارسی
-└── src/
-    ├── main.ts              # راه‌اندازی اپلیکیشن با سواگر، پایپ‌های اعتبارسنجی و CORS
-    ├── app.module.ts        # ماژول ریشه و تجمیع‌کننده ماژول‌های ۱۲ گانه
-    ├── common/
-    │   ├── decorators/      # دکوراتورهای @Roles, @CurrentUser, @Public
-    │   ├── guards/          # JwtAuthGuard و RolesGuard
-    │   ├── filters/         # AllExceptionsFilter
-    │   ├── interceptors/    # TransformInterceptor و LoggingInterceptor
-    │   ├── dto/             # PaginationQueryDto و ApiResponseDto
-    │   └── prisma/          # PrismaService و PrismaModule
-    └── modules/
-        ├── auth/            # لاگین، ثبت نام، رفرش توکن و لاگ‌اوت
-        ├── users/           # مدیریت کاربران و پروفایل‌ها
-        ├── students/        # پروفایل‌های دانشجویی و کارآموزی
-        ├── professors/      # اساتید ناظر و دانشجویان تخصیص‌یافته
-        ├── companies/       # شرکت‌های پذیرنده و سرپرستان فنی
-        ├── internship-requests/ # گردش کار درخواست‌های کارآموزی
-        ├── internships/     # مدیریت دوره‌های کارآموزی فعال
-        ├── weekly-reports/  # ارسال، داوری و تأیید گزارش‌های هفتگی
-        ├── documents/       # بارگذاری معرفی‌نامه‌ها، قراردادها و گزارش نهایی
-        ├── evaluations/     # فرم ارزیابی ۵ معیاره و محاسبه نمره پایانی
-        ├── notifications/   # اعلان‌های خودکار سیستم
-        └── activity-logs/   # لاگ‌های امنیتی و حسابرسی
-```
+- **معماری ماژولار (15 Modules)**: شامل ماژول‌های `auth`، `users`، `students`، `professors`، `companies`، `internship-requests`، `internships`، `weekly-reports`، `documents`، `evaluations`، `notifications`، `activity-logs`، `health`، `dashboard` و `settings`.
+- **احراز هویت JWT و رفرش توکن**:
+  - ورود با کد ملی، شماره دانشجویی (برای دانشجویان) یا ایمیل دانشگاهی (`POST /api/auth/login`)
+  - ثبت‌نام عمومی منحصراً با نقش `STUDENT` (`POST /api/auth/register`)
+  - دریافت پروفایل کاربر جاری همراه با `studentId` و `professorId` (`GET /api/auth/me` و `GET /api/users/profile/me`)
+  - بازسازی توکن (`POST /api/auth/refresh` و `POST /api/auth/refresh-token`)
+  - بازیابی رمز عبور بدون افشای وجود کاربر (`POST /api/auth/forgot-password` با کد `202`)
+- **کنترل دسترسی نقش‌محور و محدودسازی مالکیت (RBAC + Ownership Scoping)**:
+  - `ADMIN`: دسترسی کامل مدیریتی، آمار داشبورد (`GET /api/dashboard/stats`) و تنظیمات سامانه (`PATCH /api/settings`)
+  - `PROFESSOR`: دسترسی محدود به دانشجویان، کارآموزی‌ها، گزارش‌ها، مدارک و ارزیابی‌های تحت نظارت خود + ثبت ارزیابی نهایی منحصراً توسط استاد ناظر
+  - `STUDENT`: ثبت درخواست کارآموزی، ارسال گزارش هفتگی، بارگذاری مدارک و مشاهده وضعیت کارآموزی خود
+- **اعتبارسنجی ایمن و شناسه‌های عددی**:
+  - کلیه شناسه‌ها (`id`, `userId`, `studentId`, `professorId`, `companyId`, `internshipId`, `requestId`, ...) عدد صحیح (`Int`) هستند.
+  - پارامترهای مسیر با `ParseIntPipe` اعتبارسنجی می‌شوند (خطای `400` برای مقادیر نامعتبر).
+  - فیلدهای مرتب‌سازی (`sortBy`) بر اساس فهرست مجاز هر ماژول بررسی شده و فیلتر `status` با Enum معتبر کنترل می‌شود.
+- **بارگذاری امن فایل‌ها**: تنظیم‌شده از طریق `.env` (`UPLOAD_DESTINATION`، `MAX_FILE_SIZE_MB`، `ALLOWED_MIME_TYPES`) و سرو فایل‌ها روی `/api/uploads/...` و دانلود مستقیم روی `/api/documents/download/:id`.
+- **مستندسازی Swagger OpenAPI 3.0**: در دسترس روی `/api/docs`.
 
 ---
 
-## 🚀 نحوه اجرا با داکر (Docker Run)
-
-برای اجرای کامل سیستم به همراه پایگاه داده PostgreSQL:
+## نحوه اجرا با داکر (Docker Compose)
 
 ```bash
-# ۱. کپی کردن متغیرهای محیطی
+cd backend
+
+# ۱. کپی فایل متغیرهای محیطی و تنظیم مقادیر دلخواه
 cp .env.example .env
 
-# ۲. اجرای کانتینرهای بک‌اند و دیتابیس
-docker-compose up -d --build
-
-# ۳. اجرای مایگریشن‌ها و بذرپاشی داده‌های اولیه فارسی
-docker-compose exec backend npx prisma migrate dev --name init
-docker-compose exec backend npx prisma db seed
+# ۲. ساخت و اجرای سرویس‌های PostgreSQL و Backend
+docker compose up -d --build
 ```
 
-پس از اجرا:
-- **آدرس API**: `http://localhost:3000/api`
-- **مستندات سواگر**: `http://localhost:3000/api/docs`
+کانتینر بک‌اند به صورت خودکار هنگام راه‌اندازی:
+1. مایگریشن‌های Prisma (`prisma migrate deploy` یا `prisma db push`) را اعمال می‌کند.
+2. در صورت خالی بودن دیتابیس و فعال بودن `AUTO_SEED=true` داده‌های اولیه فارسی را بذرپاشی می‌کند.
+3. سرور را روی پورت `3000` بالا می‌آورد.
+
+آدرس‌های سرویس:
+- **API Base URL**: `http://localhost:3000/api`
+- **Health Check**: `http://localhost:3000/api/health`
+- **Swagger Docs**: `http://localhost:3000/api/docs`
 
 ---
 
-## 💻 نحوه اجرای محلی (Local Development)
+## نحوه اجرای محلی (Local Development)
 
 ```bash
-# نصب وابستگی‌ها
+cd backend
+
+# ۱. کپی فایل تنظیمات و مقداردهی DATABASE_URL
+cp .env.example .env
+
+# ۲. نصب وابستگی‌ها
 npm install
 
-# راه‌اندازی کلاینت پریزما
-npx prisma generate
+# ۳. تولید کلاینت پریزما
+npm run prisma:generate
 
-# اعمال مایگریشن بر روی دیتابیس محلی
-npx prisma migrate dev
+# ۴. اعمال اسکیما یا مایگریشن‌ها روی پایگاه داده PostgreSQL
+npm run prisma:deploy
+# یا برای همگام‌سازی سریع در محیط توسعه:
+# npm run prisma:push
 
-# بذرپاشی داده‌های اولیه فارسی
+# ۵. بذرپاشی داده‌های اولیه فارسی
 npm run prisma:seed
 
-# اجرای سرویس در حالت توسعه
+# ۶. اجرا در حالت توسعه (پورت 3000)
 npm run start:dev
+
+# بیلد و اجرای نسخه تولیدی
+npm run build
+npm run start:prod
 ```
 
 ---
 
-## 🔑 کاربران پیش‌فرض بذرپاشی‌شده جهت تست
+## اجرای تست‌ها (Tests)
 
-| نقش | ایمیل | کلمه عبور |
-| :--- | :--- | :--- |
-| **ADMIN** | `admin@university.ac.ir` | `Password123!` |
-| **PROFESSOR** | `dr.sadeghi@university.ac.ir` | `Password123!` |
-| **PROFESSOR** | `dr.karimi@university.ac.ir` | `Password123!` |
-| **STUDENT** | `m.rezaei@student.ac.ir` | `Password123!` |
-| **STUDENT** | `s.alavi@student.ac.ir` | `Password123!` |
+```bash
+cd backend
+
+# اجرای تست‌های End-to-End (سرتاسری)
+npm run test:e2e
+```
+
+---
+
+## کاربران پیش‌فرض بذرپاشی‌شده (Seed Credentials)
+
+رمز عبور پیش‌فرض تمامی حساب‌های بذرپاشی‌شده: **`Password123@`**
+
+| نقش | نام و نام خانوادگی | ایمیل | کد ملی (`identifier`) | شماره دانشجویی (`identifier`) | رمز عبور |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **ADMIN** | علیرضا حسینی | `internship_office@semnan.ac.ir` | `0098765432` | — | `Password123@` |
+| **PROFESSOR** | دکتر محمد رضایی | `rezaei@semnan.ac.ir` | `0011223344` | — | `Password123@` |
+| **PROFESSOR** | دکتر سارا احمدی | `ahmadi_s@semnan.ac.ir` | `0022334455` | — | `Password123@` |
+| **STUDENT** | محمد احمدی | `m.ahmadi@semnan.ac.ir` | `0021345678` | `400105432` | `Password123@` |
+| **STUDENT** | علی رضایی | `a.rezaei@semnan.ac.ir` | `0019876543` | `400108921` | `Password123@` |
+| **STUDENT** | سارا محمدی | `s.mohammadi@semnan.ac.ir` | `0032145698` | `400201456` | `Password123@` |
+| **STUDENT** | مهدی کریمی | `m.karimi@semnan.ac.ir` | `0045678912` | `400305882` | `Password123@` |

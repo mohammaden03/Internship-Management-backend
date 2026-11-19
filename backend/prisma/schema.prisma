@@ -18,6 +18,7 @@ enum InternshipStatus {
   ACTIVE
   COMPLETED
   REJECTED
+  CANCELLED
 }
 
 enum RequestStatus {
@@ -31,6 +32,7 @@ enum ReportStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  NEEDS_REVISION
 }
 
 enum DocumentType {
@@ -42,23 +44,23 @@ enum DocumentType {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  firstName    String
-  lastName     String
-  email        String        @unique
-  nationalCode String        @unique
-  password     String
-  phoneNumber  String?
-  role         Role          @default(STUDENT)
-  isActive     Boolean       @default(true)
-  refreshToken String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            Int            @id @default(autoincrement())
+  firstName     String
+  lastName      String
+  email         String         @unique
+  nationalCode  String         @unique
+  password      String
+  phoneNumber   String?
+  role          Role           @default(STUDENT)
+  isActive      Boolean        @default(true)
+  refreshToken  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  student      Student?
-  professor    Professor?
+  student       Student?
+  professor     Professor?
   notifications Notification[]
-  activityLogs ActivityLog[]
+  activityLogs  ActivityLog[]
 
   @@map("users")
 }
@@ -71,6 +73,8 @@ model Student {
   degreeLevel   String
   userId        Int                 @unique
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   requests      InternshipRequest[]
   internships   Internship[]
@@ -79,12 +83,15 @@ model Student {
 }
 
 model Professor {
-  id           Int           @id @default(autoincrement())
+  id           Int                 @id @default(autoincrement())
   department   String
   academicRank String
-  userId       Int           @unique
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int                 @unique
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 
+  requests     InternshipRequest[]
   internships  Internship[]
 
   @@map("professors")
@@ -100,6 +107,7 @@ model Company {
   supervisorName  String
   supervisorPhone String
   createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   requests        InternshipRequest[]
   internships     Internship[]
@@ -108,38 +116,44 @@ model Company {
 }
 
 model InternshipRequest {
-  id          Int            @id @default(autoincrement())
-  studentId   Int
-  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  companyId   Int
-  company     Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  title       String
-  description String
-  startDate   DateTime
-  endDate     DateTime
-  totalHours  Int            @default(240)
-  status      RequestStatus  @default(PENDING)
-  createdAt   DateTime       @default(now())
+  id              Int           @id @default(autoincrement())
+  studentId       Int
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  companyId       Int
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  professorId     Int?
+  professor       Professor?    @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  title           String
+  description     String
+  startDate       DateTime
+  endDate         DateTime
+  totalHours      Int           @default(240)
+  status          RequestStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  internship  Internship?
+  internship      Internship?
 
   @@map("internship_requests")
 }
 
 model Internship {
-  id                 Int              @id @default(autoincrement())
+  id                 Int               @id @default(autoincrement())
   studentId          Int
-  student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student            Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
   professorId        Int
-  professor          Professor        @relation(fields: [professorId], references: [id], onDelete: Restrict)
+  professor          Professor         @relation(fields: [professorId], references: [id], onDelete: Restrict)
   companyId          Int
-  company            Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  requestId          Int              @unique
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  requestId          Int               @unique
   request            InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
   startDate          DateTime
   endDate            DateTime
-  progressPercentage Int              @default(0)
-  status             InternshipStatus @default(ACTIVE)
+  progressPercentage Int               @default(0)
+  status             InternshipStatus  @default(ACTIVE)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   weeklyReports      WeeklyReport[]
   documents          Document[]
@@ -162,6 +176,7 @@ model WeeklyReport {
   status           ReportStatus @default(DRAFT)
   professorComment String?
   createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   @@unique([internshipId, weekNumber])
   @@map("weekly_reports")
@@ -180,17 +195,17 @@ model Document {
 }
 
 model Evaluation {
-  id              Int        @id @default(autoincrement())
-  internshipId    Int        @unique
-  internship      Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
-  technicalSkill  Float
-  responsibility  Float
-  discipline      Float
-  teamwork        Float
-  attendance      Float
-  description     String
-  finalScore      Float
-  createdAt       DateTime   @default(now())
+  id             Int        @id @default(autoincrement())
+  internshipId   Int        @unique
+  internship     Internship @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  technicalSkill Float
+  responsibility Float
+  discipline     Float
+  teamwork       Float
+  attendance     Float
+  description    String
+  finalScore     Float
+  createdAt      DateTime   @default(now())
 
   @@map("evaluations")
 }
@@ -215,4 +230,13 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@map("activity_logs")
+}
+
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
 }

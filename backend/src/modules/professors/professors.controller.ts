@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ProfessorsService } from './professors.service';
@@ -22,7 +23,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Professors')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('professors')
 export class ProfessorsController {
@@ -44,6 +45,14 @@ export class ProfessorsController {
     return this.professorsService.findAll(query);
   }
 
+  @Get('me')
+  @Roles(Role.PROFESSOR)
+  @ApiOperation({ summary: 'Professor get own profile and supervised internships' })
+  @ApiResponse({ status: 200, description: 'Own professor profile' })
+  getMyProfile(@CurrentUser() user: AuthenticatedUser) {
+    return this.professorsService.findByUserId(user.userId);
+  }
+
   @Get('assigned-students')
   @Roles(Role.PROFESSOR)
   @ApiOperation({ summary: 'Professor view all internships and students assigned to them' })
@@ -62,7 +71,7 @@ export class ProfessorsController {
   @Roles(Role.ADMIN, Role.PROFESSOR)
   @ApiOperation({ summary: 'Get professor profile by ID' })
   @ApiResponse({ status: 200, description: 'Professor details' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.professorsService.findOne(id);
   }
 
@@ -71,7 +80,7 @@ export class ProfessorsController {
   @ApiOperation({ summary: 'Admin update professor details' })
   @ApiResponse({ status: 200, description: 'Professor updated' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateProfessorDto: UpdateProfessorDto,
   ) {
     return this.professorsService.update(id, updateProfessorDto);
@@ -81,7 +90,7 @@ export class ProfessorsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin delete professor profile' })
   @ApiResponse({ status: 200, description: 'Professor profile deleted' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.professorsService.remove(id);
   }
 }

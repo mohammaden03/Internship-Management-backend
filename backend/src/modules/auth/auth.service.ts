@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -12,6 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Role } from '@prisma/client';
 
 @Injectable()
@@ -24,19 +26,37 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    // Public registration MUST always assign STUDENT role (never ADMIN or PROFESSOR)
+    const assignedRole = Role.STUDENT;
+
+    if (!dto.studentNumber || !dto.studentNumber.trim()) {
+      throw new BadRequestException('studentNumber is required for STUDENT registration');
+    }
+
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedNationalCode = dto.nationalCode.trim();
+    const normalizedStudentNumber = dto.studentNumber.trim();
+
     const existing = await this.prisma.user.findFirst({
       where: {
         OR: [
-          { email: dto.email.toLowerCase() },
-          { nationalCode: dto.nationalCode },
+          { email: normalizedEmail },
+          { nationalCode: normalizedNationalCode },
         ],
       },
     });
     if (existing) {
-      if (existing.email.toLowerCase() === dto.email.toLowerCase()) {
+      if (existing.email.toLowerCase() === normalizedEmail) {
         throw new ConflictException('ایمیل وارد شده قبلاً در سامانه ثبت شده است.');
       }
       throw new ConflictException('کد ملی وارد شده قبلاً در سامانه ثبت شده است.');
+    }
+
+    const existingStudent = await this.prisma.student.findUnique({
+      where: { studentNumber: normalizedStudentNumber },
+    });
+    if (existingStudent) {
+      throw new ConflictException('شماره دانشجویی وارد شده قبلاً در سامانه ثبت شده است.');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -46,38 +66,29 @@ export class AuthService {
         data: {
           firstName: dto.firstName,
           lastName: dto.lastName,
-          email: dto.email.toLowerCase(),
-          nationalCode: dto.nationalCode,
+          email: normalizedEmail,
+          nationalCode: normalizedNationalCode,
           password: hashedPassword,
           phoneNumber: dto.phoneNumber,
-          role: dto.role,
+          role: assignedRole,
         },
       });
 
-      if (dto.role === Role.STUDENT) {
-        if (!dto.studentNumber) {
-          throw new BadRequestException('studentNumber is required for STUDENT registration');
-        }
-        await tx.student.create({
-          data: {
-            userId: createdUser.id,
-            studentNumber: dto.studentNumber,
-            faculty: dto.faculty || 'دانشکده مهندسی',
-            major: dto.major || 'مهندسی کامپیوتر',
-            degreeLevel: dto.degreeLevel || 'کارشناسی',
-          },
-        });
-      } else if (dto.role === Role.PROFESSOR) {
-        await tx.professor.create({
-          data: {
-            userId: createdUser.id,
-            department: dto.department || 'گروه مهندسی کامپیوتر',
-            academicRank: dto.academicRank || 'استادیار',
-          },
-        });
-      }
+      const createdStudent = await tx.student.create({
+        data: {
+          userId: createdUser.id,
+          studentNumber: normalizedStudentNumber,
+          faculty: dto.faculty || 'دانشکده مهندسی',
+          major: dto.major || 'مهندسی کامپیوتر',
+          degreeLevel: dto.degreeLevel || 'کارشناسی',
+        },
+      });
 
-      return createdUser;
+      return {
+        ...createdUser,
+        student: createdStudent,
+        professor: null,
+      };
     });
 
     await this.activityLogsService.log({
@@ -105,7 +116,7 @@ export class AuthService {
       throw new BadRequestException('رمز عبور الزامی است.');
     }
 
-    // 1. First, check if input matches user's nationalCode
+    // 1. Check by nationalCode
     let user = await this.prisma.user.findUnique({
       where: { nationalCode: rawIdentifier },
       include: {
@@ -114,7 +125,7 @@ export class AuthService {
       },
     });
 
-    // 2. If not found by nationalCode, check if student matches by studentNumber
+    // 2. Check by studentNumber
     if (!user) {
       const student = await this.prisma.student.findUnique({
         where: { studentNumber: rawIdentifier },
@@ -148,8 +159,6 @@ export class AuthService {
       throw new UnauthorizedException('اطلاعات ورود نامعتبر است. کاربری با این کد ملی یا شماره دانشجویی یافت نشد.');
     }
 
-    // Enforce role-specific authentication rules:
-    // Professor & Admin: login MUST be with nationalCode (or official university email)
     if (user.role === Role.PROFESSOR || user.role === Role.ADMIN) {
       const matchedWithNationalCode = user.nationalCode === rawIdentifier;
       const matchedWithEmail = user.email.toLowerCase() === rawIdentifier.toLowerCase();
@@ -158,7 +167,6 @@ export class AuthService {
       }
     }
 
-    // Student: login is allowed with nationalCode OR studentNumber
     if (user.role === Role.STUDENT) {
       const matchedWithNationalCode = user.nationalCode === rawIdentifier;
       const matchedWithStudentNumber = user.student?.studentNumber === rawIdentifier;
@@ -177,13 +185,33 @@ export class AuthService {
       throw new UnauthorizedException('حساب کاربری شما توسط مدیر سامانه غیرفعال شده است.');
     }
 
-    // Track activity log
     await this.activityLogsService.log({
       userId: user.id,
       action: `ورود موفقیت‌آمیز (${user.firstName} ${user.lastName} - کد ملی: ${user.nationalCode}) به سامانه با نقش ${user.role}`,
     });
 
     return this.generateTokens(user);
+  }
+
+  async getMe(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        student: true,
+        professor: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID '${userId}' not found`);
+    }
+
+    const { password, refreshToken, ...safeUser } = user;
+    return {
+      ...safeUser,
+      studentId: user.student?.id ?? null,
+      professorId: user.professor?.id ?? null,
+    };
   }
 
   async refreshToken(dto: RefreshTokenDto) {
@@ -193,8 +221,13 @@ export class AuthService {
         secret: refreshSecret,
       });
 
+      const userId = Number(payload.sub);
+      if (!Number.isInteger(userId) || userId <= 0) {
+        throw new UnauthorizedException('Invalid refresh token subject');
+      }
+
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { id: userId },
         include: {
           student: true,
           professor: true,
@@ -211,7 +244,20 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string) {
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const target = (dto.identifier || dto.email || '').trim();
+    if (!target) {
+      throw new BadRequestException('شناسه یا ایمیل جهت بازیابی رمز عبور الزامی است.');
+    }
+
+    // Intentionally do not reveal whether the user exists to prevent user enumeration
+    return {
+      accepted: true,
+      message: 'در صورت وجود حساب کاربری با این مشخصات، دستورالعمل بازیابی رمز عبور ارسال خواهد شد.',
+    };
+  }
+
+  async logout(userId: number) {
     await this.prisma.user.update({
       where: { id: userId },
       data: { refreshToken: null },
@@ -232,8 +278,8 @@ export class AuthService {
       nationalCode: user.nationalCode,
       studentNumber: user.student?.studentNumber,
       role: user.role,
-      studentId: user.student?.id,
-      professorId: user.professor?.id,
+      studentId: user.student?.id ?? null,
+      professorId: user.professor?.id ?? null,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -246,7 +292,6 @@ export class AuthService {
       expiresIn: process.env.JWT_REFRESH_EXPIRATION || '7d',
     });
 
-    // Store refresh token in database
     await this.prisma.user.update({
       where: { id: user.id },
       data: { refreshToken },
@@ -263,10 +308,10 @@ export class AuthService {
         lastName: user.lastName,
         email: user.email,
         nationalCode: user.nationalCode,
-        studentNumber: user.student?.studentNumber,
+        studentNumber: user.student?.studentNumber ?? null,
         role: user.role,
-        studentId: user.student?.id,
-        professorId: user.professor?.id,
+        studentId: user.student?.id ?? null,
+        professorId: user.professor?.id ?? null,
       },
     };
   }

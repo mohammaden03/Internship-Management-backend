@@ -8,12 +8,13 @@ import {
   Delete,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { UsersQueryDto } from './dto/users-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -21,7 +22,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Users')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
@@ -39,7 +40,7 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin get all users with search, pagination, sorting and role filter' })
   @ApiResponse({ status: 200, description: 'Paginated user list' })
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: UsersQueryDto) {
     return this.usersService.findAll(query);
   }
 
@@ -54,7 +55,7 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin get user by ID' })
   @ApiResponse({ status: 200, description: 'User details' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }
 
@@ -62,7 +63,10 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin update user details, role or active status' })
   @ApiResponse({ status: 200, description: 'Updated user' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -70,7 +74,7 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin delete a user' })
   @ApiResponse({ status: 200, description: 'User deleted' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);
   }
 }

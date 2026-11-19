@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
@@ -20,7 +21,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('Companies')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('companies')
 export class CompaniesController {
@@ -44,7 +45,7 @@ export class CompaniesController {
   @Get(':id')
   @ApiOperation({ summary: 'Get company profile by ID' })
   @ApiResponse({ status: 200, description: 'Company profile details' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.companiesService.findOne(id);
   }
 
@@ -53,7 +54,7 @@ export class CompaniesController {
   @ApiOperation({ summary: 'Admin update company profile details' })
   @ApiResponse({ status: 200, description: 'Company updated' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCompanyDto: UpdateCompanyDto,
   ) {
     return this.companiesService.update(id, updateCompanyDto);
@@ -63,7 +64,7 @@ export class CompaniesController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin delete company profile' })
   @ApiResponse({ status: 200, description: 'Company deleted' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.companiesService.remove(id);
   }
 }

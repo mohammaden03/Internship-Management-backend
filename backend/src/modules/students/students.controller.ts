@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
@@ -22,7 +23,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Students')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('students')
 export class StudentsController {
@@ -56,7 +57,10 @@ export class StudentsController {
   @Roles(Role.ADMIN, Role.PROFESSOR, Role.STUDENT)
   @ApiOperation({ summary: 'Get student details by ID (Student can only access own profile)' })
   @ApiResponse({ status: 200, description: 'Student profile' })
-  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     if (user.role === Role.STUDENT && user.studentId !== id) {
       throw new ForbiddenException('Students can only access their own profile');
     }
@@ -67,7 +71,10 @@ export class StudentsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin update student details' })
   @ApiResponse({ status: 200, description: 'Updated student' })
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateStudentDto: UpdateStudentDto,
+  ) {
     return this.studentsService.update(id, updateStudentDto);
   }
 
@@ -75,7 +82,7 @@ export class StudentsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin delete student profile' })
   @ApiResponse({ status: 200, description: 'Student profile deleted' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.studentsService.remove(id);
   }
 }

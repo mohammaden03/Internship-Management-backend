@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InternshipRequestsService } from './internship-requests.service';
@@ -21,7 +22,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Internship Requests')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('internship-requests')
 export class InternshipRequestsController {
@@ -66,8 +67,15 @@ export class InternshipRequestsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get specific internship request by ID' })
   @ApiResponse({ status: 200, description: 'Request details' })
-  findOne(@Param('id') id: string) {
-    return this.requestsService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const request = await this.requestsService.findOne(id);
+    if (user.role === Role.STUDENT && request.studentId !== user.studentId) {
+      throw new ForbiddenException('Students can only access their own internship requests');
+    }
+    return request;
   }
 
   @Patch(':id/status')
@@ -75,7 +83,7 @@ export class InternshipRequestsController {
   @ApiOperation({ summary: 'Admin approve or reject request (Approving auto-creates active Internship and assigns supervising professor)' })
   @ApiResponse({ status: 200, description: 'Request status updated' })
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRequestStatusDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {

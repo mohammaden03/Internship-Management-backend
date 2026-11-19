@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { InternshipsService } from './internships.service';
@@ -22,7 +23,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Internships')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('internships')
 export class InternshipsController {
@@ -38,10 +39,13 @@ export class InternshipsController {
 
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR)
-  @ApiOperation({ summary: 'Admin or Professor get all internships with search, pagination, and status filter' })
+  @ApiOperation({ summary: 'Admin or Professor get internships with search, pagination, and status filter' })
   @ApiResponse({ status: 200, description: 'Paginated internships' })
-  findAll(@Query() query: PaginationQueryDto) {
-    return this.internshipsService.findAll(query);
+  findAll(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.internshipsService.findAll(query, user);
   }
 
   @Get('my')
@@ -72,7 +76,10 @@ export class InternshipsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get full internship details by ID' })
   @ApiResponse({ status: 200, description: 'Internship details' })
-  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const internship = await this.internshipsService.findOne(id);
     if (user.role === Role.STUDENT && internship.studentId !== user.studentId) {
       throw new ForbiddenException('Students can only access their own internship details');
@@ -88,17 +95,18 @@ export class InternshipsController {
   @ApiOperation({ summary: 'Admin or Professor update progress percentage or status' })
   @ApiResponse({ status: 200, description: 'Internship updated' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateInternshipDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.internshipsService.update(id, dto);
+    return this.internshipsService.update(id, dto, user);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin delete an internship record' })
   @ApiResponse({ status: 200, description: 'Internship deleted' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.internshipsService.remove(id);
   }
 }

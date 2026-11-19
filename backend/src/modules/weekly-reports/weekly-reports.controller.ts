@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { WeeklyReportsService } from './weekly-reports.service';
@@ -21,7 +22,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Weekly Reports')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('weekly-reports')
 export class WeeklyReportsController {
@@ -42,40 +43,49 @@ export class WeeklyReportsController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.PROFESSOR)
-  @ApiOperation({ summary: 'Admin or Professor get all weekly reports with status filter (e.g. GET /weekly-reports?status=APPROVED), pagination and search' })
+  @Roles(Role.ADMIN, Role.PROFESSOR, Role.STUDENT)
+  @ApiOperation({ summary: 'Get weekly reports scoped by role with status filter, pagination and search' })
   @ApiResponse({ status: 200, description: 'Paginated weekly reports' })
-  findAll(@Query() query: PaginationQueryDto) {
-    return this.reportsService.findAll(query);
+  findAll(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.findAll(query, user);
   }
 
   @Get('internship/:internshipId')
-  @ApiOperation({ summary: 'Get all weekly reports for an internship' })
+  @ApiOperation({ summary: 'Get all weekly reports for an internship (scoped by role)' })
   @ApiResponse({ status: 200, description: 'Reports list' })
-  findByInternship(@Param('internshipId') internshipId: string) {
-    return this.reportsService.findByInternship(internshipId);
+  findByInternship(
+    @Param('internshipId', ParseIntPipe) internshipId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.findByInternship(internshipId, user);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get specific weekly report details' })
+  @ApiOperation({ summary: 'Get specific weekly report details (scoped by role)' })
   @ApiResponse({ status: 200, description: 'Weekly report details' })
-  findOne(@Param('id') id: string) {
-    return this.reportsService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.findOne(id, user);
   }
 
   @Patch(':id/review')
   @Roles(Role.ADMIN, Role.PROFESSOR)
-  @ApiOperation({ summary: 'Professor or Admin approve or reject a weekly report (triggers notification & updates progress)' })
+  @ApiOperation({ summary: 'Professor or Admin review a weekly report (APPROVED, REJECTED, or NEEDS_REVISION)' })
   @ApiResponse({ status: 200, description: 'Report reviewed' })
   review(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReviewWeeklyReportDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.reportsService.review(
       id,
       dto,
-      user.professorId || null,
+      user.professorId ?? null,
       user.role,
       user.userId,
     );

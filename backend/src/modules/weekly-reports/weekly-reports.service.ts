@@ -11,7 +11,20 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateWeeklyReportDto } from './dto/create-report.dto';
 import { ReviewWeeklyReportDto } from './dto/review-report.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { SAFE_USER_SELECT } from '../../common/constants/user-select';
+import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
 import { ReportStatus, Role, WeeklyReport } from '@prisma/client';
+
+const REPORT_SORT_FIELDS = [
+  'id',
+  'weekNumber',
+  'startDate',
+  'endDate',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 @Injectable()
 export class WeeklyReportsService {
@@ -21,12 +34,16 @@ export class WeeklyReportsService {
     private activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(studentId: string, userId: string, dto: CreateWeeklyReportDto): Promise<WeeklyReport> {
+  async create(
+    studentId: number,
+    userId: number,
+    dto: CreateWeeklyReportDto,
+  ): Promise<WeeklyReport> {
     const internship = await this.prisma.internship.findUnique({
       where: { id: dto.internshipId },
       include: {
-        professor: { include: { user: true } },
-        student: { include: { user: true } },
+        professor: { include: { user: { select: SAFE_USER_SELECT } } },
+        student: { include: { user: { select: SAFE_USER_SELECT } } },
       },
     });
 
@@ -48,7 +65,9 @@ export class WeeklyReportsService {
     });
 
     if (existingReport) {
-      throw new ConflictException(`Weekly report for week ${dto.weekNumber} already exists`);
+      throw new ConflictException(
+        `گزارش هفتگی شماره ${dto.weekNumber} برای این دوره کارآموزی قبلاً ثبت شده است.`,
+      );
     }
 
     const report = await this.prisma.weeklyReport.create({
@@ -65,31 +84,53 @@ export class WeeklyReportsService {
       },
     });
 
-    // Notify supervising professor
     await this.notificationsService.create({
       userId: internship.professor.user.id,
       title: 'ارسال گزارش هفتگی جدید',
       message: `دانشجو ${internship.student.user.firstName} ${internship.student.user.lastName} گزارش هفتگی شماره ${dto.weekNumber} را ارسال نمود.`,
     });
 
-    // Automated Activity Log
     await this.activityLogsService.log({
       userId,
-      action: `ثبت و ارسال گزارش هفتگی شماره ${dto.weekNumber} برای کارآموزی ${internship.id.slice(0, 8)}`,
+      action: `ثبت و ارسال گزارش هفتگی شماره ${dto.weekNumber} برای کارآموزی ${String(internship.id)}`,
     });
 
     return report;
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>> {
+  async findAll(
+    query: PaginationQueryDto,
+    user: AuthenticatedUser,
+  ): Promise<PaginatedResult<any>> {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (query.status) {
-      where.status = query.status as ReportStatus;
+
+    if (user.role === Role.PROFESSOR) {
+      if (!user.professorId) {
+        return {
+          items: [],
+          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
+        };
+      }
+      where.internship = { professorId: user.professorId };
+    } else if (user.role === Role.STUDENT) {
+      if (!user.studentId) {
+        return {
+          items: [],
+          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
+        };
+      }
+      where.internship = { studentId: user.studentId };
     }
+
+    const statusFilter = validateEnumFilter(query.status, ReportStatus, 'status');
+    if (statusFilter) {
+      where.status = statusFilter;
+    }
+
     if (query.search) {
       where.OR = [
         { activities: { contains: query.search, mode: 'insensitive' } },
@@ -100,18 +141,20 @@ export class WeeklyReportsService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, REPORT_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.weeklyReport.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { weekNumber: 'asc' },
+        orderBy,
         include: {
           internship: {
             include: {
-              student: { include: { user: { select: { firstName: true, lastName: true, email: true } } } },
+              student: { include: { user: { select: SAFE_USER_SELECT } } },
               company: { select: { id: true, name: true } },
-              professor: { include: { user: { select: { firstName: true, lastName: true } } } },
+              professor: { include: { user: { select: SAFE_USER_SELECT } } },
             },
           },
         },
@@ -131,21 +174,38 @@ export class WeeklyReportsService {
     };
   }
 
-  async findByInternship(internshipId: string): Promise<WeeklyReport[]> {
+  async findByInternship(
+    internshipId: number,
+    user: AuthenticatedUser,
+  ): Promise<WeeklyReport[]> {
+    const internship = await this.prisma.internship.findUnique({
+      where: { id: internshipId },
+    });
+    if (!internship) {
+      throw new NotFoundException(`Internship with ID '${internshipId}' not found`);
+    }
+
+    if (user.role === Role.STUDENT && internship.studentId !== user.studentId) {
+      throw new ForbiddenException('You can only view weekly reports for your own internship');
+    }
+    if (user.role === Role.PROFESSOR && internship.professorId !== user.professorId) {
+      throw new ForbiddenException('You can only view weekly reports for internships under your supervision');
+    }
+
     return this.prisma.weeklyReport.findMany({
       where: { internshipId },
       orderBy: { weekNumber: 'asc' },
     });
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: number, user?: AuthenticatedUser): Promise<any> {
     const report = await this.prisma.weeklyReport.findUnique({
       where: { id },
       include: {
         internship: {
           include: {
-            student: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } } },
-            professor: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } } },
+            student: { include: { user: { select: SAFE_USER_SELECT } } },
+            professor: { include: { user: { select: SAFE_USER_SELECT } } },
             company: true,
           },
         },
@@ -156,15 +216,22 @@ export class WeeklyReportsService {
       throw new NotFoundException(`Weekly report with ID '${id}' not found`);
     }
 
+    if (user?.role === Role.STUDENT && report.internship.studentId !== user.studentId) {
+      throw new ForbiddenException('You can only view your own weekly reports');
+    }
+    if (user?.role === Role.PROFESSOR && report.internship.professorId !== user.professorId) {
+      throw new ForbiddenException('You can only view weekly reports of students under your supervision');
+    }
+
     return report;
   }
 
   async review(
-    id: string,
+    id: number,
     dto: ReviewWeeklyReportDto,
-    professorId: string | null,
+    professorId: number | null,
     userRole: Role,
-    userId: string,
+    userId: number,
   ) {
     const report = await this.findOne(id);
 
@@ -172,8 +239,13 @@ export class WeeklyReportsService {
       throw new ForbiddenException('You can only review reports for your assigned students');
     }
 
-    if (dto.status !== ReportStatus.APPROVED && dto.status !== ReportStatus.REJECTED) {
-      throw new BadRequestException('Status must be either APPROVED or REJECTED');
+    const allowedReviewStatuses: ReportStatus[] = [
+      ReportStatus.APPROVED,
+      ReportStatus.REJECTED,
+      ReportStatus.NEEDS_REVISION,
+    ];
+    if (!allowedReviewStatuses.includes(dto.status)) {
+      throw new BadRequestException('Status must be APPROVED, REJECTED, or NEEDS_REVISION');
     }
 
     const updated = await this.prisma.weeklyReport.update({
@@ -186,7 +258,6 @@ export class WeeklyReportsService {
 
     const studentUserId = report.internship.student.user.id;
 
-    // Automated Notifications
     if (dto.status === ReportStatus.APPROVED) {
       await this.notificationsService.create({
         userId: studentUserId,
@@ -196,21 +267,31 @@ export class WeeklyReportsService {
           : `گزارش هفتگی شماره ${report.weekNumber} شما توسط استاد ناظر با موفقیت تأیید گردید.`,
       });
 
-      // Update internship progress percentage
       const totalReports = await this.prisma.weeklyReport.count({
         where: { internshipId: report.internshipId, status: ReportStatus.APPROVED },
       });
-      // Assuming 10 weeks full internship
       const progress = Math.min(100, totalReports * 10);
       await this.prisma.internship.update({
         where: { id: report.internshipId },
         data: { progressPercentage: progress },
       });
 
-      // Automated Activity Log
       await this.activityLogsService.log({
         userId,
         action: `تأیید گزارش هفتگی شماره ${report.weekNumber} برای دانشجو ${report.internship.student.user.firstName} ${report.internship.student.user.lastName}`,
+      });
+    } else if (dto.status === ReportStatus.NEEDS_REVISION) {
+      await this.notificationsService.create({
+        userId: studentUserId,
+        title: `نیاز به اصلاح گزارش هفتگی شماره ${report.weekNumber}`,
+        message: dto.professorComment
+          ? `گزارش هفتگی شماره ${report.weekNumber} نیاز به اصلاح دارد. نظر استاد: "${dto.professorComment}"`
+          : `گزارش هفتگی شماره ${report.weekNumber} برای اصلاح و بازنگری بازگشت داده شد.`,
+      });
+
+      await this.activityLogsService.log({
+        userId,
+        action: `درخواست اصلاح گزارش هفتگی شماره ${report.weekNumber}`,
       });
     } else {
       await this.notificationsService.create({

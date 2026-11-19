@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { resolveOrderBy } from '../../common/utils/query.utils';
 import { Notification } from '@prisma/client';
+
+const NOTIFICATION_SORT_FIELDS = ['id', 'title', 'isRead', 'createdAt'] as const;
 
 @Injectable()
 export class NotificationsService {
@@ -19,7 +22,7 @@ export class NotificationsService {
   }
 
   async findUserNotifications(
-    userId: string,
+    userId: number,
     query: PaginationQueryDto,
   ): Promise<PaginatedResult<Notification>> {
     const page = query.page || 1;
@@ -34,12 +37,14 @@ export class NotificationsService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, NOTIFICATION_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.notification.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.notification.count({ where }),
     ]);
@@ -56,7 +61,7 @@ export class NotificationsService {
     };
   }
 
-  async markAsRead(id: string, userId: string): Promise<Notification> {
+  async markAsRead(id: number, userId: number): Promise<Notification> {
     const notification = await this.prisma.notification.findFirst({
       where: { id, userId },
     });
@@ -70,7 +75,7 @@ export class NotificationsService {
     });
   }
 
-  async markAllAsRead(userId: string): Promise<{ count: number }> {
+  async markAllAsRead(userId: number): Promise<{ count: number }> {
     const result = await this.prisma.notification.updateMany({
       where: { userId, isRead: false },
       data: { isRead: true },

@@ -4,9 +4,18 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.SEED_IF_EMPTY === 'true') {
+    const existingUsers = await prisma.user.count();
+    if (existingUsers > 0) {
+      console.log(`ℹ️ Database already has ${existingUsers} user(s); skipping seed because SEED_IF_EMPTY=true.`);
+      return;
+    }
+  }
+
   console.log('🌱 Starting Persian Seed Data Generation with Auto-increment Integer IDs...');
 
   // Clean existing tables in reverse relational order
+  await prisma.systemSetting.deleteMany();
   await prisma.activityLog.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.evaluation.deleteMany();
@@ -249,6 +258,7 @@ async function main() {
     data: {
       studentId: stu1.id,
       companyId: comp1.id,
+      professorId: prof1.id,
       title: 'توسعه بک‌اند و سرویس‌های میکروسرویس',
       description: 'درخواست رسمی کارآموزی تابستانه جهت گذراندن دوره ۲۴۰ ساعته کارآموزی در شرکت فناوران هوشمند در زمینه توسعه بک‌اند.',
       startDate: new Date('2024-06-21T00:00:00.000Z'),
@@ -288,6 +298,7 @@ async function main() {
     data: {
       studentId: stu2.id,
       companyId: comp2.id,
+      professorId: prof1.id,
       title: 'سیستم‌های بانکی و پرداخت الکترونیک',
       description: 'درخواست مصوب دوره کارآموزی در شرکت توسعه نرم‌افزار پارس.',
       startDate: new Date('2024-06-30T00:00:00.000Z'),
@@ -301,6 +312,7 @@ async function main() {
     data: {
       studentId: stu3.id,
       companyId: comp3.id,
+      professorId: prof2.id,
       title: 'امنیت سایبری و زیرساخت شبکه',
       description: 'درخواست مصوب دوره کارآموزی در شرکت فناوری اطلاعات آریا.',
       startDate: new Date('2024-07-05T00:00:00.000Z'),
@@ -314,6 +326,7 @@ async function main() {
     data: {
       studentId: stu4.id,
       companyId: comp1.id,
+      professorId: prof1.id,
       title: 'توسعه سامانه‌های فناوری اطلاعات و کلود',
       description: 'درخواست مصوب دوره کارآموزی دانشجو مهدی کریمی در شرکت فناوران هوشمند.',
       startDate: new Date('2024-06-04T00:00:00.000Z'),
@@ -582,6 +595,26 @@ async function main() {
     await prisma.notification.create({ data: n });
   }
 
+  // 10b. Seed Default System Settings
+  const defaultSettings = [
+    { key: 'academicTerm', value: '۱۴۰۳-۱۴۰۴ نیمسال اول' },
+    { key: 'registrationStart', value: '2024-09-01' },
+    { key: 'registrationEnd', value: '2024-10-15' },
+    { key: 'gradingDeadline', value: '2025-01-20' },
+    { key: 'minHours', value: '240' },
+    { key: 'maxWeeklyHours', value: '40' },
+    { key: 'autoIssueLetter', value: 'true' },
+    { key: 'insuranceEnabled', value: 'true' },
+  ];
+
+  for (const setting of defaultSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value },
+      create: setting,
+    });
+  }
+
   // 11. CRITICAL: Synchronize all PostgreSQL autoincrement sequences
   // This guarantees that any subsequent CREATE API call receives the next integer (MAX(id) + 1)
   // without any primary key conflict or execution failure!
@@ -596,7 +629,8 @@ async function main() {
     'evaluations',
     'documents',
     'notifications',
-    'activity_logs'
+    'activity_logs',
+    'system_settings'
   ];
 
   for (const table of tables) {

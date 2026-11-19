@@ -1,10 +1,10 @@
-import { PrismaService } from '@/common/prisma/prisma.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 
 export interface JwtPayload {
-  sub: string;
+  sub: number;
   email: string;
   role: 'ADMIN' | 'PROFESSOR' | 'STUDENT';
 }
@@ -20,8 +20,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    const userId = Number(payload.sub);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new UnauthorizedException('Invalid token subject');
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: userId },
       include: {
         student: true,
         professor: true,

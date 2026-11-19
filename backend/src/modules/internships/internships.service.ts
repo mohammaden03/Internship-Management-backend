@@ -1,9 +1,27 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateInternshipDto } from './dto/create-internship.dto';
 import { UpdateInternshipDto } from './dto/update-internship.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
-import { Internship, InternshipStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { SAFE_USER_SELECT } from '../../common/constants/user-select';
+import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import { Internship, InternshipStatus, Role } from '@prisma/client';
+
+const INTERNSHIP_SORT_FIELDS = [
+  'id',
+  'startDate',
+  'endDate',
+  'progressPercentage',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 @Injectable()
 export class InternshipsService {
@@ -20,21 +38,35 @@ export class InternshipsService {
     return this.prisma.internship.create({
       data: dto,
       include: {
-        student: { include: { user: true } },
-        professor: { include: { user: true } },
+        student: { include: { user: { select: SAFE_USER_SELECT } } },
+        professor: { include: { user: { select: SAFE_USER_SELECT } } },
         company: true,
       },
     });
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>> {
+  async findAll(
+    query: PaginationQueryDto,
+    user?: AuthenticatedUser,
+  ): Promise<PaginatedResult<any>> {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (query.status) {
-      where.status = query.status as InternshipStatus;
+    if (user?.role === Role.PROFESSOR) {
+      if (!user.professorId) {
+        return {
+          items: [],
+          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
+        };
+      }
+      where.professorId = user.professorId;
+    }
+
+    const statusFilter = validateEnumFilter(query.status, InternshipStatus, 'status');
+    if (statusFilter) {
+      where.status = statusFilter;
     }
     if (query.search) {
       where.OR = [
@@ -46,21 +78,23 @@ export class InternshipsService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, INTERNSHIP_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.internship.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [query.sortBy || 'startDate']: query.sortOrder || 'desc' },
+        orderBy,
         include: {
           student: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
+              user: { select: SAFE_USER_SELECT },
             },
           },
           professor: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true, role: true } },
+              user: { select: SAFE_USER_SELECT },
             },
           },
           company: true,
@@ -90,14 +124,15 @@ export class InternshipsService {
     };
   }
 
-  async findByStudent(studentId: string): Promise<Internship[]> {
+  async findByStudent(studentId: number): Promise<Internship[]> {
     return this.prisma.internship.findMany({
       where: { studentId },
+      orderBy: { id: 'desc' },
       include: {
         company: true,
         professor: {
           include: {
-            user: { select: { firstName: true, lastName: true, email: true, role: true } },
+            user: { select: SAFE_USER_SELECT },
           },
         },
         weeklyReports: { orderBy: { weekNumber: 'asc' } },
@@ -107,26 +142,29 @@ export class InternshipsService {
     });
   }
 
-  async findByProfessor(professorId: string, query: PaginationQueryDto) {
+  async findByProfessor(professorId: number, query: PaginationQueryDto) {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: any = { professorId };
-    if (query.status) {
-      where.status = query.status as InternshipStatus;
+    const statusFilter = validateEnumFilter(query.status, InternshipStatus, 'status');
+    if (statusFilter) {
+      where.status = statusFilter;
     }
+
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, INTERNSHIP_SORT_FIELDS, 'id', 'desc');
 
     const [items, totalItems] = await Promise.all([
       this.prisma.internship.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { startDate: 'desc' },
+        orderBy,
         include: {
           student: {
             include: {
-              user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
+              user: { select: SAFE_USER_SELECT },
             },
           },
           company: true,
@@ -150,18 +188,18 @@ export class InternshipsService {
     };
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: number): Promise<any> {
     const internship = await this.prisma.internship.findUnique({
       where: { id },
       include: {
         student: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true } },
+            user: { select: SAFE_USER_SELECT },
           },
         },
         professor: {
           include: {
-            user: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+            user: { select: SAFE_USER_SELECT },
           },
         },
         company: true,
@@ -181,19 +219,28 @@ export class InternshipsService {
     return internship;
   }
 
-  async update(id: string, dto: UpdateInternshipDto): Promise<Internship> {
-    await this.findOne(id);
+  async update(
+    id: number,
+    dto: UpdateInternshipDto,
+    user?: AuthenticatedUser,
+  ): Promise<Internship> {
+    const existing = await this.findOne(id);
+    if (user?.role === Role.PROFESSOR && existing.professorId !== user.professorId) {
+      throw new ForbiddenException('Professors can only update internships assigned to them');
+    }
+
     return this.prisma.internship.update({
       where: { id },
       data: dto,
       include: {
         company: true,
-        professor: { include: { user: true } },
+        professor: { include: { user: { select: SAFE_USER_SELECT } } },
+        student: { include: { user: { select: SAFE_USER_SELECT } } },
       },
     });
   }
 
-  async remove(id: string): Promise<{ message: string }> {
+  async remove(id: number): Promise<{ message: string }> {
     await this.findOne(id);
     await this.prisma.internship.delete({ where: { id } });
     return { message: `Internship with ID '${id}' deleted` };

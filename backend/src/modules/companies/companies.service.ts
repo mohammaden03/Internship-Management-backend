@@ -3,7 +3,19 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { SAFE_USER_SELECT } from '../../common/constants/user-select';
+import { resolveOrderBy } from '../../common/utils/query.utils';
 import { Company } from '@prisma/client';
+
+const COMPANY_SORT_FIELDS = [
+  'id',
+  'name',
+  'industry',
+  'city',
+  'supervisorName',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 @Injectable()
 export class CompaniesService {
@@ -30,12 +42,14 @@ export class CompaniesService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, COMPANY_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.company.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [query.sortBy || 'createdAt']: query.sortOrder || 'desc' },
+        orderBy,
         include: {
           _count: {
             select: {
@@ -60,21 +74,21 @@ export class CompaniesService {
     };
   }
 
-  async findOne(id: string): Promise<Company> {
+  async findOne(id: number): Promise<Company> {
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
         internships: {
           include: {
             student: {
-              include: { user: { select: { firstName: true, lastName: true, email: true } } },
+              include: { user: { select: SAFE_USER_SELECT } },
             },
           },
         },
         requests: {
           include: {
             student: {
-              include: { user: { select: { firstName: true, lastName: true } } },
+              include: { user: { select: SAFE_USER_SELECT } },
             },
           },
         },
@@ -88,7 +102,7 @@ export class CompaniesService {
     return company;
   }
 
-  async update(id: string, dto: UpdateCompanyDto): Promise<Company> {
+  async update(id: number, dto: UpdateCompanyDto): Promise<Company> {
     await this.findOne(id);
     return this.prisma.company.update({
       where: { id },
@@ -96,7 +110,7 @@ export class CompaniesService {
     });
   }
 
-  async remove(id: string): Promise<{ message: string }> {
+  async remove(id: number): Promise<{ message: string }> {
     await this.findOne(id);
     await this.prisma.company.delete({ where: { id } });
     return { message: `Company with ID '${id}' successfully deleted` };

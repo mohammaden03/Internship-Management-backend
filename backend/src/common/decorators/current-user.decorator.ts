@@ -1,11 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export interface AuthenticatedUser {
-  userId: string;
+  userId: number;
   email: string;
   role: 'ADMIN' | 'PROFESSOR' | 'STUDENT';
-  studentId?: string;
-  professorId?: string;
+  studentId?: number;
+  professorId?: number;
   firstName?: string;
   lastName?: string;
 }

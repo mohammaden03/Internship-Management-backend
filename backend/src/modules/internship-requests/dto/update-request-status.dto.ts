@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RequestStatus } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateRequestStatusDto {
   @ApiProperty({ enum: RequestStatus, example: RequestStatus.APPROVED })
@@ -10,9 +11,19 @@ export class UpdateRequestStatusDto {
 
   @ApiPropertyOptional({
     description: 'Assigned supervising professor ID (required when status is APPROVED)',
-    example: 'uuid-professor-id',
+    example: 1,
   })
   @IsOptional()
-  @IsUUID()
-  professorId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  professorId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Optional rejection reason when status is REJECTED',
+    example: 'ظرفیت پذیرش شرکت تکمیل شده است',
+  })
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
 }

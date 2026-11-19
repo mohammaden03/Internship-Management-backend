@@ -1,13 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { InternshipStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class UpdateInternshipDto {
-  @ApiPropertyOptional({ example: 'uuid-professor-id' })
+  @ApiPropertyOptional({ example: 1 })
   @IsOptional()
-  @IsUUID()
-  professorId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  professorId?: number;
 
   @ApiPropertyOptional({ example: '2026-07-01T00:00:00.000Z' })
   @IsOptional()
@@ -23,6 +25,7 @@ export class UpdateInternshipDto {
 
   @ApiPropertyOptional({ example: 65 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(100)

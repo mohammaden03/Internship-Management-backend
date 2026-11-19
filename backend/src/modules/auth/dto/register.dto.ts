@@ -20,7 +20,7 @@ export class RegisterDto {
   @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({ example: 'm.rezaei@student.ac.ir' })
+  @ApiProperty({ example: 'm.rezaei@semnan.ac.ir' })
   @IsEmail()
   email: string;
 
@@ -29,7 +29,7 @@ export class RegisterDto {
   @IsNotEmpty()
   nationalCode: string;
 
-  @ApiProperty({ example: 'Password123!' })
+  @ApiProperty({ example: 'Password123@' })
   @IsString()
   @MinLength(6)
   password: string;
@@ -39,12 +39,16 @@ export class RegisterDto {
   @IsString()
   phoneNumber?: string;
 
-  @ApiProperty({ enum: Role, default: Role.STUDENT })
+  @ApiPropertyOptional({
+    enum: Role,
+    default: Role.STUDENT,
+    description: 'Public registration always assigns STUDENT role regardless of input',
+  })
+  @IsOptional()
   @IsEnum(Role)
-  role: Role = Role.STUDENT;
+  role?: Role;
 
-  // Student-specific fields (if role === STUDENT)
-  @ApiPropertyOptional({ example: '99123401' })
+  @ApiPropertyOptional({ example: '401123456' })
   @IsOptional()
   @IsString()
   studentNumber?: string;
@@ -63,15 +67,4 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   degreeLevel?: string;
-
-  // Professor-specific fields (if role === PROFESSOR)
-  @ApiPropertyOptional({ example: 'مهندسی کامپیوتر' })
-  @IsOptional()
-  @IsString()
-  department?: string;
-
-  @ApiPropertyOptional({ example: 'استادیار' })
-  @IsOptional()
-  @IsString()
-  academicRank?: string;
 }

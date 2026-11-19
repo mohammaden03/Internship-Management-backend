@@ -1,12 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateInternshipRequestDto {
-  @ApiProperty({ example: 'uuid-company-id' })
-  @IsUUID()
-  @IsNotEmpty()
-  companyId: string;
+  @ApiProperty({ example: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  companyId: number;
 
   @ApiProperty({ example: 'کارآموزی توسعه بک‌اند با NestJS و میکروسرویس‌ها' })
   @IsString()
@@ -32,6 +33,7 @@ export class CreateInternshipRequestDto {
 
   @ApiPropertyOptional({ example: 240, default: 240 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(100)
   totalHours?: number = 240;

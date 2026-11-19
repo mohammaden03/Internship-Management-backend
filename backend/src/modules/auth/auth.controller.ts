@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   HttpCode,
@@ -11,6 +12,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -22,9 +24,9 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new Student or Professor' })
-  @ApiResponse({ status: 201, description: 'User successfully registered and tokens returned' })
-  @ApiResponse({ status: 409, description: 'Email already exists' })
+  @ApiOperation({ summary: 'Public student self-registration (always assigns STUDENT role)' })
+  @ApiResponse({ status: 201, description: 'Student successfully registered and tokens returned' })
+  @ApiResponse({ status: 409, description: 'Email, nationalCode, or studentNumber already exists' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -39,6 +41,15 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Get('me')
+  @ApiOperation({ summary: 'Get authenticated user profile including student/professor details' })
+  @ApiResponse({ status: 200, description: 'Current authenticated user profile' })
+  getMe(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getMe(user.userId);
+  }
+
   @Public()
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
@@ -49,8 +60,27 @@ export class AuthController {
     return this.authService.refreshToken(dto);
   }
 
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Alias of /auth/refresh-token to renew JWT tokens' })
+  @ApiResponse({ status: 200, description: 'Tokens renewed' })
+  @ApiResponse({ status: 401, description: 'Refresh token expired or invalid' })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Initiate password recovery flow (always returns 202 without user enumeration)' })
+  @ApiResponse({ status: 202, description: 'Recovery request accepted' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revoke active refresh token and log out current user' })

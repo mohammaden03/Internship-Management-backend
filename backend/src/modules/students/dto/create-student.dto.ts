@@ -1,13 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
 
 export class CreateStudentDto {
-  @ApiProperty({ example: 'uuid-user-id' })
-  @IsUUID()
-  @IsNotEmpty()
-  userId: string;
+  @ApiProperty({ example: 4 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  userId: number;
 
-  @ApiProperty({ example: '99123401' })
+  @ApiProperty({ example: '400105432' })
   @IsString()
   @IsNotEmpty()
   studentNumber: string;

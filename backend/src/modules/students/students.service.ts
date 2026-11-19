@@ -7,12 +7,31 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { SAFE_USER_SELECT } from '../../common/constants/user-select';
+import { resolveOrderBy } from '../../common/utils/query.utils';
+
+const STUDENT_SORT_FIELDS = [
+  'id',
+  'studentNumber',
+  'faculty',
+  'major',
+  'degreeLevel',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 @Injectable()
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateStudentDto) {
+    const existingUserRecord = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+    });
+    if (!existingUserRecord) {
+      throw new NotFoundException(`User with ID '${dto.userId}' not found`);
+    }
+
     const existingStNo = await this.prisma.student.findUnique({
       where: { studentNumber: dto.studentNumber },
     });
@@ -20,26 +39,17 @@ export class StudentsService {
       throw new ConflictException('A student with this studentNumber already exists');
     }
 
-    const existingUser = await this.prisma.student.findUnique({
+    const existingStudent = await this.prisma.student.findUnique({
       where: { userId: dto.userId },
     });
-    if (existingUser) {
+    if (existingStudent) {
       throw new ConflictException('This user already has a student profile');
     }
 
     return this.prisma.student.create({
       data: dto,
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-            role: true,
-          },
-        },
+        user: { select: SAFE_USER_SELECT },
       },
     });
   }
@@ -61,24 +71,16 @@ export class StudentsService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, STUDENT_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.student.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [query.sortBy || 'studentNumber']: query.sortOrder || 'asc' },
+        orderBy,
         include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phoneNumber: true,
-              role: true,
-              isActive: true,
-            },
-          },
+          user: { select: SAFE_USER_SELECT },
           internships: {
             select: {
               id: true,
@@ -104,21 +106,11 @@ export class StudentsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: number) {
     const student = await this.prisma.student.findUnique({
       where: { id },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-            role: true,
-            isActive: true,
-          },
-        },
+        user: { select: SAFE_USER_SELECT },
         requests: {
           include: { company: true },
         },
@@ -127,7 +119,7 @@ export class StudentsService {
             company: true,
             professor: {
               include: {
-                user: { select: { firstName: true, lastName: true, email: true, role: true } },
+                user: { select: SAFE_USER_SELECT },
               },
             },
             weeklyReports: true,
@@ -145,26 +137,17 @@ export class StudentsService {
     return student;
   }
 
-  async findByUserId(userId: string) {
-    return this.prisma.student.findUnique({
+  async findByUserId(userId: number) {
+    const student = await this.prisma.student.findUnique({
       where: { userId },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-            role: true,
-          },
-        },
+        user: { select: SAFE_USER_SELECT },
         internships: {
           include: {
             company: true,
             professor: {
               include: {
-                user: { select: { firstName: true, lastName: true, email: true, role: true } },
+                user: { select: SAFE_USER_SELECT },
               },
             },
             weeklyReports: { orderBy: { weekNumber: 'asc' } },
@@ -174,27 +157,26 @@ export class StudentsService {
         },
       },
     });
+
+    if (!student) {
+      throw new NotFoundException(`Student profile for user '${userId}' not found`);
+    }
+
+    return student;
   }
 
-  async update(id: string, dto: UpdateStudentDto) {
+  async update(id: number, dto: UpdateStudentDto) {
     await this.findOne(id);
     return this.prisma.student.update({
       where: { id },
       data: dto,
       include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            role: true,
-          },
-        },
+        user: { select: SAFE_USER_SELECT },
       },
     });
   }
 
-  async remove(id: string) {
+  async remove(id: number) {
     await this.findOne(id);
     await this.prisma.student.delete({ where: { id } });
     return { message: `Student profile with ID '${id}' deleted` };

@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto';
 import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { SAFE_USER_SELECT } from '../../common/constants/user-select';
+import { resolveOrderBy } from '../../common/utils/query.utils';
 import { ActivityLog } from '@prisma/client';
+
+const ACTIVITY_LOG_SORT_FIELDS = ['id', 'action', 'createdAt'] as const;
 
 @Injectable()
 export class ActivityLogsService {
@@ -32,22 +36,16 @@ export class ActivityLogsService {
       ];
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, ACTIVITY_LOG_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.activityLog.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              role: true,
-            },
-          },
+          user: { select: SAFE_USER_SELECT },
         },
       }),
       this.prisma.activityLog.count({ where }),
@@ -65,7 +63,7 @@ export class ActivityLogsService {
     };
   }
 
-  async findByUser(userId: string, query: PaginationQueryDto): Promise<PaginatedResult<ActivityLog>> {
+  async findByUser(userId: number, query: PaginationQueryDto): Promise<PaginatedResult<ActivityLog>> {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
@@ -75,12 +73,14 @@ export class ActivityLogsService {
       where.action = { contains: query.search, mode: 'insensitive' };
     }
 
+    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, ACTIVITY_LOG_SORT_FIELDS, 'id', 'desc');
+
     const [items, totalItems] = await Promise.all([
       this.prisma.activityLog.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
       this.prisma.activityLog.count({ where }),
     ]);

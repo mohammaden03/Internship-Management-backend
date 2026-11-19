@@ -6,7 +6,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
-// 12 Feature Modules
+// Feature Modules
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { StudentsModule } from './modules/students/students.module';
@@ -19,6 +19,9 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { HealthModule } from './modules/health/health.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -27,6 +30,9 @@ import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module
       envFilePath: '.env',
     }),
     PrismaModule,
+    HealthModule,
+    DashboardModule,
+    SettingsModule,
     AuthModule,
     UsersModule,
     StudentsModule,

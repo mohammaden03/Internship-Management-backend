@@ -7,6 +7,7 @@ import {
   Body,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
@@ -19,7 +20,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { Role } from '@prisma/client';
 
 @ApiTags('Notifications')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
@@ -43,20 +44,20 @@ export class NotificationsController {
     return this.notificationsService.create(dto);
   }
 
-  @Patch(':id/read')
-  @ApiOperation({ summary: 'Mark specific notification as read' })
-  @ApiResponse({ status: 200, description: 'Notification marked as read' })
-  markAsRead(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.notificationsService.markAsRead(id, user.userId);
-  }
-
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all notifications of current user as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
   markAllAsRead(@CurrentUser() user: AuthenticatedUser) {
     return this.notificationsService.markAllAsRead(user.userId);
+  }
+
+  @Patch(':id/read')
+  @ApiOperation({ summary: 'Mark specific notification as read' })
+  @ApiResponse({ status: 200, description: 'Notification marked as read' })
+  markAsRead(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.notificationsService.markAsRead(id, user.userId);
   }
 }
