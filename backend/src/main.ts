@@ -1,24 +1,82 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { AppModule } from './app.module';
-import { dirname, isAbsolute, join, resolve } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { ValidationPipe, Logger, LogLevel } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as helmetModule from 'helmet';
+import { AppModule } from './app.module';
+import { parseCorsOrigins } from './common/config/env.validation';
+import { buildSwaggerDocument } from './common/swagger/swagger.config';
+import { initOptionalTelemetry } from './common/observability/telemetry';
+
+const helmet = ((helmetModule as any).default ?? helmetModule) as typeof helmetModule.default;
+
+function resolveNestLogLevels(level?: string): LogLevel[] {
+  switch ((level || 'log').toLowerCase()) {
+    case 'debug':
+      return ['error', 'warn', 'log', 'debug', 'verbose'];
+    case 'warn':
+      return ['error', 'warn'];
+    case 'error':
+      return ['error'];
+    default:
+      return ['error', 'warn', 'log'];
+  }
+}
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  initOptionalTelemetry();
 
-  // Global API Route Prefix
-  const globalPrefix = (process.env.API_PREFIX || 'api').replace(/^\/+|\/+$/g, '');
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: resolveNestLogLevels(process.env.LOG_LEVEL),
+  });
+
+  const configService = app.get(ConfigService);
+  const globalPrefix = configService
+    .get<string>('API_PREFIX', 'api')
+    .replace(/^\/+|\/+$/g, '');
+  const port = configService.get<number>('PORT', 3010);
+  const corsOrigins = parseCorsOrigins(
+    configService.get<string>(
+      'CORS_ORIGINS',
+      'http://localhost:3000,http://localhost:3010,http://localhost:5173',
+    ),
+  );
+
   app.setGlobalPrefix(globalPrefix);
 
-  // Enable CORS
+  // Security headers via Helmet with explicit CSP
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
+      },
+      crossOriginResourcePolicy: { policy: 'same-site' },
+    }),
+  );
+
+  // Explicit CORS allowlist with credentials support
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin) {
+        // Allow non-browser / server-to-server / curl requests without Origin header
+        return callback(null, true);
+      }
+      if (corsOrigins.includes('*') || corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Origin '${origin}' is not allowed by CORS policy`), false);
+    },
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id', 'Content-Disposition'],
   });
 
   // Global Validation Pipe with class-validator
@@ -33,65 +91,11 @@ async function bootstrap() {
     }),
   );
 
-  // Static Assets for uploaded documents aligned with API prefix (/api/uploads/...)
-  const configuredUploadDest = process.env.UPLOAD_DESTINATION || './uploads/documents';
-  const resolvedUploadDest = isAbsolute(configuredUploadDest)
-    ? configuredUploadDest
-    : resolve(process.cwd(), configuredUploadDest);
-  if (!existsSync(resolvedUploadDest)) {
-    mkdirSync(resolvedUploadDest, { recursive: true });
-  }
-  const uploadsRoot = dirname(resolvedUploadDest);
-  app.useStaticAssets(uploadsRoot, {
-    prefix: `/${globalPrefix}/uploads/`,
-  });
+  // Note: Static asset serving for /api/uploads/ is intentionally REMOVED.
+  // All uploaded documents are served exclusively via authenticated GET /api/documents/download/:id.
 
   // Swagger OpenAPI 3.0 Documentation Setup
-  const config = new DocumentBuilder()
-    .setTitle(process.env.APP_NAME || 'University Internship Management System API')
-    .setDescription(
-      process.env.APP_DESCRIPTION ||
-        `سامانه جامع و یکپارچه مدیریت کارآموزی دانشگاه
-
-Production-ready NestJS Backend with:
-- JWT Authentication & Refresh Tokens
-- Role-Based Access Control (ADMIN, PROFESSOR, STUDENT)
-- PostgreSQL with Prisma ORM and Auto-increment Integer IDs
-- File Uploads with Multer & env-driven MIME/size validation
-- Automated Notifications & Audit Activity Logs
-- Dashboard KPIs & Persistent System Settings
-- Pagination, Search, Allow-listed Sorting, and Validated Status Filtering`,
-    )
-    .setVersion('1.0.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'Authorization',
-        description: 'Enter your JWT access token (Bearer <token>)',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
-    .addTag('Health', 'Service liveness check')
-    .addTag('Auth', 'Authentication, JWT login, registration, refresh, forgot-password, me and logout')
-    .addTag('Dashboard', 'Admin system statistics and counts')
-    .addTag('Settings', 'Persistent system-wide internship settings')
-    .addTag('Users', 'User management, profile fetching and admin controls')
-    .addTag('Students', 'Student academic profiles, majors, degree levels and personal dashboard')
-    .addTag('Professors', 'Professor profiles, departments, academic ranks and assigned students')
-    .addTag('Companies', 'Hosting corporate partners, industries, cities and company supervisors')
-    .addTag('Internship Requests', 'Student internship application lifecycle and approval workflow')
-    .addTag('Internships', 'Active internship supervision, progress tracking and status updates')
-    .addTag('Weekly Reports', 'Weekly progress reporting, student submissions and professor reviews')
-    .addTag('Documents', 'Multer file upload, introduction letters, contracts and download links')
-    .addTag('Evaluations', 'Final academic evaluations, 5-criteria grading and scoring formulas')
-    .addTag('Notifications', 'Automated system notifications and read receipts')
-    .addTag('Activity Logs', 'System-wide audit trail and security event logs')
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
+  const document = buildSwaggerDocument(app);
   SwaggerModule.setup(`${globalPrefix}/docs`, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
@@ -101,14 +105,27 @@ Production-ready NestJS Backend with:
     customSiteTitle: 'University Internship API Docs',
   });
 
-  const port = Number(process.env.PORT || 3000);
+  // Enable graceful shutdown hooks (handles SIGTERM/SIGINT and closes Prisma cleanly)
+  app.enableShutdownHooks();
+
   await app.listen(port, '0.0.0.0');
 
-  logger.log(`=======================================================`);
-  logger.log(`🚀 NestJS Backend running at: http://localhost:${port}/${globalPrefix}`);
-  logger.log(`📚 Swagger Documentation at: http://localhost:${port}/${globalPrefix}/docs`);
-  logger.log(`💚 Health Check at: http://localhost:${port}/${globalPrefix}/health`);
-  logger.log(`=======================================================`);
+  const addressInfo = app.getHttpServer().address();
+  const boundPort =
+    typeof addressInfo === 'object' && addressInfo !== null ? addressInfo.port : port;
+  const boundHost =
+    typeof addressInfo === 'object' && addressInfo !== null
+      ? addressInfo.address
+      : '0.0.0.0';
+
+  logger.log('=======================================================');
+  logger.log(`NestJS Backend listening on ${boundHost}:${boundPort}`);
+  logger.log(`API Base URL: http://localhost:${boundPort}/${globalPrefix}`);
+  logger.log(`Swagger Docs: http://localhost:${boundPort}/${globalPrefix}/docs`);
+  logger.log(`Liveness:     http://localhost:${boundPort}/${globalPrefix}/health`);
+  logger.log(`Readiness:    http://localhost:${boundPort}/${globalPrefix}/health/ready`);
+  logger.log(`CORS Allow:   ${corsOrigins.join(', ')}`);
+  logger.log('=======================================================');
 }
 
 bootstrap();

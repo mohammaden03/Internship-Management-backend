@@ -16,6 +16,7 @@ import { InternshipsService } from './internships.service';
 import { CreateInternshipDto } from './dto/create-internship.dto';
 import { UpdateInternshipDto } from './dto/update-internship.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,7 +41,7 @@ export class InternshipsController {
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR)
   @ApiOperation({ summary: 'Admin or Professor get internships with search, pagination, and status filter' })
-  @ApiResponse({ status: 200, description: 'Paginated internships' })
+  @ApiPaginatedResponse()
   findAll(
     @Query() query: PaginationQueryDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -51,7 +52,7 @@ export class InternshipsController {
   @Get('my')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Student view own internship records with reports, documents, and evaluation' })
-  @ApiResponse({ status: 200, description: 'List of student internships' })
+  @ApiPaginatedResponse(undefined, { paginated: false })
   getMyInternships(@CurrentUser() user: AuthenticatedUser) {
     if (!user.studentId) {
       throw new ForbiddenException('Student profile not found for user');
@@ -62,7 +63,7 @@ export class InternshipsController {
   @Get('supervised')
   @Roles(Role.PROFESSOR)
   @ApiOperation({ summary: 'Professor view all internships under their academic supervision' })
-  @ApiResponse({ status: 200, description: 'Supervised internships' })
+  @ApiPaginatedResponse()
   getSupervisedInternships(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: PaginationQueryDto,
@@ -104,8 +105,8 @@ export class InternshipsController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Admin delete an internship record' })
-  @ApiResponse({ status: 200, description: 'Internship deleted' })
+  @ApiOperation({ summary: 'Admin soft-delete an internship record' })
+  @ApiResponse({ status: 200, description: 'Internship soft-deleted' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.internshipsService.remove(id);
   }

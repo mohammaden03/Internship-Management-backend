@@ -3,9 +3,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 export interface SystemSettingsResponse {
+  universityName: string;
   academicTerm: string;
   registrationStart: string;
   registrationEnd: string;
+  letterDeadline: string;
   gradingDeadline: string;
   minHours: number;
   maxWeeklyHours: number;
@@ -15,9 +17,11 @@ export interface SystemSettingsResponse {
 }
 
 const DEFAULT_SETTINGS: Omit<SystemSettingsResponse, 'updatedAt'> = {
-  academicTerm: '۱۴۰۳-۱۴۰۴ نیمسال اول',
+  universityName: 'دانشگاه سمنان',
+  academicTerm: 'تابستان ۱۴۰۳',
   registrationStart: '2024-09-01',
   registrationEnd: '2024-10-15',
+  letterDeadline: '2024-11-01',
   gradingDeadline: '2025-01-20',
   minHours: 240,
   maxWeeklyHours: 40,
@@ -55,9 +59,11 @@ export class SettingsService {
     };
 
     return {
+      universityName: map.get('universityName') ?? DEFAULT_SETTINGS.universityName,
       academicTerm: map.get('academicTerm') ?? DEFAULT_SETTINGS.academicTerm,
       registrationStart: map.get('registrationStart') ?? DEFAULT_SETTINGS.registrationStart,
       registrationEnd: map.get('registrationEnd') ?? DEFAULT_SETTINGS.registrationEnd,
+      letterDeadline: map.get('letterDeadline') ?? DEFAULT_SETTINGS.letterDeadline,
       gradingDeadline: map.get('gradingDeadline') ?? DEFAULT_SETTINGS.gradingDeadline,
       minHours: parseNumber('minHours', DEFAULT_SETTINGS.minHours),
       maxWeeklyHours: parseNumber('maxWeeklyHours', DEFAULT_SETTINGS.maxWeeklyHours),
@@ -68,6 +74,26 @@ export class SettingsService {
           ? latestUpdatedAt.toISOString()
           : new Date().toISOString(),
     };
+  }
+
+  async getPublicSettings() {
+    const full = await this.getSettings();
+    return {
+      universityName: full.universityName,
+      academicTerm: full.academicTerm,
+      registrationStart: full.registrationStart,
+      registrationEnd: full.registrationEnd,
+      letterDeadline: full.letterDeadline,
+      gradingDeadline: full.gradingDeadline,
+      updatedAt: full.updatedAt,
+    };
+  }
+
+  async getCurrentAcademicTerm(): Promise<string> {
+    const row = await this.prisma.systemSetting.findUnique({
+      where: { key: 'academicTerm' },
+    });
+    return row?.value || DEFAULT_SETTINGS.academicTerm;
   }
 
   async updateSettings(dto: UpdateSettingsDto): Promise<SystemSettingsResponse> {

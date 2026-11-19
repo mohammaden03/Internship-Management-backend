@@ -1,108 +1,126 @@
-# سامانه جامع مدیریت کارآموزی دانشگاه (University Internship Management System)
+# University Internship Management System — Backend
 
-بک‌اند کامل و ماژولار سامانه مدیریت کارآموزی دانشگاه، توسعه‌یافته با **NestJS**، **PostgreSQL** و **Prisma ORM** با شناسه‌های تماماً عددی (`Int @default(autoincrement())`).
+Production-hardened NestJS 10 + Prisma 6 + PostgreSQL 16 backend for managing university internships, requests, weekly reports, documents, evaluations, notifications, settings, and security audit logs.
 
----
-
-## ویژگی‌های کلیدی (Key Features)
-
-- **معماری ماژولار (15 Modules)**: شامل ماژول‌های `auth`، `users`، `students`، `professors`، `companies`، `internship-requests`، `internships`، `weekly-reports`، `documents`، `evaluations`، `notifications`، `activity-logs`، `health`، `dashboard` و `settings`.
-- **احراز هویت JWT و رفرش توکن**:
-  - ورود با کد ملی، شماره دانشجویی (برای دانشجویان) یا ایمیل دانشگاهی (`POST /api/auth/login`)
-  - ثبت‌نام عمومی منحصراً با نقش `STUDENT` (`POST /api/auth/register`)
-  - دریافت پروفایل کاربر جاری همراه با `studentId` و `professorId` (`GET /api/auth/me` و `GET /api/users/profile/me`)
-  - بازسازی توکن (`POST /api/auth/refresh` و `POST /api/auth/refresh-token`)
-  - بازیابی رمز عبور بدون افشای وجود کاربر (`POST /api/auth/forgot-password` با کد `202`)
-- **کنترل دسترسی نقش‌محور و محدودسازی مالکیت (RBAC + Ownership Scoping)**:
-  - `ADMIN`: دسترسی کامل مدیریتی، آمار داشبورد (`GET /api/dashboard/stats`) و تنظیمات سامانه (`PATCH /api/settings`)
-  - `PROFESSOR`: دسترسی محدود به دانشجویان، کارآموزی‌ها، گزارش‌ها، مدارک و ارزیابی‌های تحت نظارت خود + ثبت ارزیابی نهایی منحصراً توسط استاد ناظر
-  - `STUDENT`: ثبت درخواست کارآموزی، ارسال گزارش هفتگی، بارگذاری مدارک و مشاهده وضعیت کارآموزی خود
-- **اعتبارسنجی ایمن و شناسه‌های عددی**:
-  - کلیه شناسه‌ها (`id`, `userId`, `studentId`, `professorId`, `companyId`, `internshipId`, `requestId`, ...) عدد صحیح (`Int`) هستند.
-  - پارامترهای مسیر با `ParseIntPipe` اعتبارسنجی می‌شوند (خطای `400` برای مقادیر نامعتبر).
-  - فیلدهای مرتب‌سازی (`sortBy`) بر اساس فهرست مجاز هر ماژول بررسی شده و فیلتر `status` با Enum معتبر کنترل می‌شود.
-- **بارگذاری امن فایل‌ها**: تنظیم‌شده از طریق `.env` (`UPLOAD_DESTINATION`، `MAX_FILE_SIZE_MB`، `ALLOWED_MIME_TYPES`) و سرو فایل‌ها روی `/api/uploads/...` و دانلود مستقیم روی `/api/documents/download/:id`.
-- **مستندسازی Swagger OpenAPI 3.0**: در دسترس روی `/api/docs`.
+- **Default Port**: `3010`
+- **API Base URL**: `http://localhost:3010/api`
+- **Swagger UI**: `http://localhost:3010/api/docs`
+- **Machine-Readable OpenAPI**: `backend/docs/openapi.json` (generated automatically on `npm run build`)
+- **API Contract Guide**: `backend/docs/api-contract.md`
+- **Security Architecture**: `backend/SECURITY.md`
 
 ---
 
-## نحوه اجرا با داکر (Docker Compose)
+## Run in 5 Minutes (Windows PowerShell, macOS & Linux)
 
-```bash
+### Prerequisites
+- Node.js `>= 20` and npm `>= 10`
+- PostgreSQL 16 (local installation or Docker)
+
+### 1. Configure Environment
+In the `backend` directory, copy `.env.example` to `.env`:
+
+**PowerShell (Windows):**
+```powershell
 cd backend
-
-# ۱. کپی فایل متغیرهای محیطی و تنظیم مقادیر دلخواه
-cp .env.example .env
-
-# ۲. ساخت و اجرای سرویس‌های PostgreSQL و Backend
-docker compose up -d --build
+Copy-Item .env.example .env
 ```
 
-کانتینر بک‌اند به صورت خودکار هنگام راه‌اندازی:
-1. مایگریشن‌های Prisma (`prisma migrate deploy` یا `prisma db push`) را اعمال می‌کند.
-2. در صورت خالی بودن دیتابیس و فعال بودن `AUTO_SEED=true` داده‌های اولیه فارسی را بذرپاشی می‌کند.
-3. سرور را روی پورت `3000` بالا می‌آورد.
-
-آدرس‌های سرویس:
-- **API Base URL**: `http://localhost:3000/api`
-- **Health Check**: `http://localhost:3000/api/health`
-- **Swagger Docs**: `http://localhost:3000/api/docs`
-
----
-
-## نحوه اجرای محلی (Local Development)
-
+**macOS / Linux:**
 ```bash
 cd backend
-
-# ۱. کپی فایل تنظیمات و مقداردهی DATABASE_URL
 cp .env.example .env
+```
 
-# ۲. نصب وابستگی‌ها
+Edit `backend/.env` and set:
+- `DATABASE_URL` pointing to your PostgreSQL 16 database
+- `JWT_SECRET` (at least 32 characters, distinct from `JWT_REFRESH_SECRET`)
+- `JWT_REFRESH_SECRET` (at least 32 characters, distinct from `JWT_SECRET`)
+- `CORS_ORIGINS` (comma-separated frontend URLs, e.g. `http://localhost:5173,http://localhost:3000`)
+
+Generate secure random secrets on any OS:
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+### 2. Install, Migrate & Seed
+```bash
 npm install
-
-# ۳. تولید کلاینت پریزما
 npm run prisma:generate
-
-# ۴. اعمال اسکیما یا مایگریشن‌ها روی پایگاه داده PostgreSQL
-npm run prisma:deploy
-# یا برای همگام‌سازی سریع در محیط توسعه:
-# npm run prisma:push
-
-# ۵. بذرپاشی داده‌های اولیه فارسی
+npm run prisma:migrate
 npm run prisma:seed
-
-# ۶. اجرا در حالت توسعه (پورت 3000)
-npm run start:dev
-
-# بیلد و اجرای نسخه تولیدی
-npm run build
-npm run start:prod
 ```
 
----
-
-## اجرای تست‌ها (Tests)
-
+### 3. Start the Server
 ```bash
-cd backend
-
-# اجرای تست‌های End-to-End (سرتاسری)
-npm run test:e2e
+npm run start:dev
 ```
+
+Verify health:
+- Liveness: `http://localhost:3010/api/health`
+- Readiness (`SELECT 1` DB check): `http://localhost:3010/api/health/ready`
+- Swagger UI: `http://localhost:3010/api/docs`
+
+### Running with Docker Compose
+From `backend/`:
+```bash
+docker compose up --build -d
+```
+Ensure `JWT_SECRET` and `JWT_REFRESH_SECRET` (>= 32 chars each, distinct) are set in `backend/.env` before running Docker Compose.
 
 ---
 
-## کاربران پیش‌فرض بذرپاشی‌شده (Seed Credentials)
+## Seeded Development Accounts
 
-رمز عبور پیش‌فرض تمامی حساب‌های بذرپاشی‌شده: **`Password123@`**
+In development, `npm run prisma:seed` uses `SEED_DEFAULT_PASSWORD` (defaults to `Password123@` in non-production environments; required explicitly in `NODE_ENV=production`).
 
-| نقش | نام و نام خانوادگی | ایمیل | کد ملی (`identifier`) | شماره دانشجویی (`identifier`) | رمز عبور |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **ADMIN** | علیرضا حسینی | `internship_office@semnan.ac.ir` | `0098765432` | — | `Password123@` |
-| **PROFESSOR** | دکتر محمد رضایی | `rezaei@semnan.ac.ir` | `0011223344` | — | `Password123@` |
-| **PROFESSOR** | دکتر سارا احمدی | `ahmadi_s@semnan.ac.ir` | `0022334455` | — | `Password123@` |
-| **STUDENT** | محمد احمدی | `m.ahmadi@semnan.ac.ir` | `0021345678` | `400105432` | `Password123@` |
-| **STUDENT** | علی رضایی | `a.rezaei@semnan.ac.ir` | `0019876543` | `400108921` | `Password123@` |
-| **STUDENT** | سارا محمدی | `s.mohammadi@semnan.ac.ir` | `0032145698` | `400201456` | `Password123@` |
-| **STUDENT** | مهدی کریمی | `m.karimi@semnan.ac.ir` | `0045678912` | `400305882` | `Password123@` |
+| Role | Name | Identifier (National Code) | Student Number | Email |
+| --- | --- | --- | --- | --- |
+| `ADMIN` | علیرضا حسینی | `0098765432` | — | `internship_office@semnan.ac.ir` |
+| `PROFESSOR` | دکتر محمد رضایی | `0011223344` | — | `rezaei@semnan.ac.ir` |
+| `PROFESSOR` | دکتر سارا احمدی | `0022334455` | — | `ahmadi_s@semnan.ac.ir` |
+| `STUDENT` | محمد احمدی | `0021345678` | `400105432` | `m.ahmadi@semnan.ac.ir` |
+| `STUDENT` | علی رضایی | `0019876543` | `400108921` | `a.rezaei@semnan.ac.ir` |
+| `STUDENT` | سارا محمدی | `0032145698` | `400201456` | `s.mohammadi@semnan.ac.ir` |
+
+---
+
+## Available npm Scripts
+
+| Script | Description |
+| --- | --- |
+| `npm run start:dev` | Start API in watch mode on `PORT` (default `3010`) |
+| `npm run build` | Compile NestJS (`dist/main.js`) and regenerate `docs/openapi.json` |
+| `npm run build:seed` | Compile `prisma/seed.ts` to `dist-seed/seed.js` |
+| `npm run lint` | Run strict TypeScript type-checking (`tsc --noEmit`) |
+| `npm run test` | Run unit tests (`src/**/*.spec.ts`) |
+| `npm run test:cov` | Run unit tests with Jest coverage threshold enforcement |
+| `npm run test:e2e` | Run full HTTP E2E suite (in-memory Prisma service) |
+| `npm run test:integration` | Run real PostgreSQL integration suite (`DATABASE_URL` required) |
+| `npm run openapi:generate` | Regenerate `docs/openapi.json` without a live DB |
+
+---
+
+## Troubleshooting
+
+### 1. Startup Fails with `Invalid environment configuration`
+All required env vars are validated at startup via Zod (`src/common/config/env.validation.ts`).
+- `PORT` must be an integer `1..65535` (never `0` or empty text).
+- `JWT_SECRET` and `JWT_REFRESH_SECRET` must each be at least 32 characters and different from one another.
+- In `NODE_ENV=production`, wildcard `CORS_ORIGINS=*` and placeholder secrets starting with `change_me` are rejected.
+
+### 2. CORS Blocked in Browser (`Origin ... is not allowed by CORS policy`)
+Add your exact frontend origin (scheme + host + port, no trailing slash) to `CORS_ORIGINS` in `backend/.env`:
+```env
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:3010
+```
+Restart the backend after editing `.env`.
+
+### 3. Document Upload Rejected (400) or Download Returns 404
+- Uploads are validated by extension, MIME type, **and** binary magic bytes (e.g. a renamed `.txt` file with a `.pdf` extension is rejected).
+- Allowed formats: PDF, DOC, DOCX, JPG/JPEG, PNG up to `MAX_FILE_SIZE_MB` (default `10`).
+- Direct `/api/uploads/...` static URLs are disabled by design. Always download files through authenticated `GET /api/documents/download/:id` with a `Bearer` token.
+- If `GET /api/documents/download/:id` returns `404` for a seeded demo document, that is expected because seeded metadata records do not have physical binaries on disk until a real file is uploaded.
+
+### 4. Password Reset Emails Not Sending Locally
+If `SMTP_URL` is empty in development, the backend logs a startup warning and skips SMTP delivery (in production, configure `SMTP_URL` and `SMTP_FROM` so reset emails are delivered).

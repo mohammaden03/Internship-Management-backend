@@ -1,0 +1,82 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  verify:
+    name: Lint, Build, Unit (Coverage), E2E & PostgreSQL Integration
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: internship_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci_user -d internship_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      NODE_ENV: test
+      PORT: 3010
+      DATABASE_URL: postgresql://ci_user:ci_password@localhost:5432/internship_ci?schema=public
+      JWT_SECRET: ci_pipeline_access_jwt_secret_key_at_least_32_chars_a
+      JWT_REFRESH_SECRET: ci_pipeline_refresh_jwt_secret_key_at_least_32_chars_b
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3010
+      SEED_DEFAULT_PASSWORD: Password123@
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: Type-check / Lint
+        run: npm run lint
+
+      - name: Build NestJS & Emit OpenAPI Spec
+        run: npm run build && npm run build:seed
+
+      - name: Run Unit Tests with Coverage Thresholds
+        run: npm run test:cov
+
+      - name: Run E2E Tests (In-Memory)
+        run: npm run test:e2e
+
+      - name: Apply Prisma Migrations & Seed PostgreSQL
+        run: |
+          npx prisma migrate deploy
+          npm run prisma:seed
+
+      - name: Run Real PostgreSQL Integration Suite
+        run: npm run test:integration

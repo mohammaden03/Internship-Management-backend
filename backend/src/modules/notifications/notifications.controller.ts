@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -28,7 +29,7 @@ export class NotificationsController {
 
   @Get('my')
   @ApiOperation({ summary: 'Get current user notifications with pagination & search' })
-  @ApiResponse({ status: 200, description: 'Paginated list of notifications' })
+  @ApiPaginatedResponse()
   getMyNotifications(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: PaginationQueryDto,

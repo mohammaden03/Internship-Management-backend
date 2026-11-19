@@ -15,6 +15,7 @@ import { WeeklyReportsService } from './weekly-reports.service';
 import { CreateWeeklyReportDto } from './dto/create-report.dto';
 import { ReviewWeeklyReportDto } from './dto/review-report.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -45,7 +46,7 @@ export class WeeklyReportsController {
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR, Role.STUDENT)
   @ApiOperation({ summary: 'Get weekly reports scoped by role with status filter, pagination and search' })
-  @ApiResponse({ status: 200, description: 'Paginated weekly reports' })
+  @ApiPaginatedResponse()
   findAll(
     @Query() query: PaginationQueryDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -55,7 +56,7 @@ export class WeeklyReportsController {
 
   @Get('internship/:internshipId')
   @ApiOperation({ summary: 'Get all weekly reports for an internship (scoped by role)' })
-  @ApiResponse({ status: 200, description: 'Reports list' })
+  @ApiPaginatedResponse(undefined, { paginated: false })
   findByInternship(
     @Param('internshipId', ParseIntPipe) internshipId: number,
     @CurrentUser() user: AuthenticatedUser,

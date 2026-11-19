@@ -15,7 +15,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { UpdateMyStudentProfileDto } from './dto/update-my-student-profile.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,7 +42,7 @@ export class StudentsController {
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR)
   @ApiOperation({ summary: 'Admin or Professor get all students with pagination, search, and sorting' })
-  @ApiResponse({ status: 200, description: 'Paginated students list' })
+  @ApiPaginatedResponse(undefined, { paginated: true })
   findAll(@Query() query: PaginationQueryDto) {
     return this.studentsService.findAll(query);
   }
@@ -51,6 +53,17 @@ export class StudentsController {
   @ApiResponse({ status: 200, description: 'Own student profile' })
   getMyProfile(@CurrentUser() user: AuthenticatedUser) {
     return this.studentsService.findByUserId(user.userId);
+  }
+
+  @Patch('me')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Student update own editable profile fields only' })
+  @ApiResponse({ status: 200, description: 'Updated own student profile' })
+  updateMyProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateMyStudentProfileDto,
+  ) {
+    return this.studentsService.updateMyProfile(user.userId, dto);
   }
 
   @Get(':id')

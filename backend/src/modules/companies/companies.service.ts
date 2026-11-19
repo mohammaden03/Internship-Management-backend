@@ -2,9 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+} from '../../common/utils/query.utils';
 import { Company } from '@prisma/client';
 
 const COMPANY_SORT_FIELDS = [
@@ -27,24 +35,29 @@ export class CompaniesService {
     });
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<Company>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<Company>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
 
     const where: any = {};
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { industry: { contains: query.search, mode: 'insensitive' } },
-        { city: { contains: query.search, mode: 'insensitive' } },
-        { supervisorName: { contains: query.search, mode: 'insensitive' } },
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { industry: { contains: searchTerm, mode: 'insensitive' } },
+        { city: { contains: searchTerm, mode: 'insensitive' } },
+        { supervisorName: { contains: searchTerm, mode: 'insensitive' } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, COMPANY_SORT_FIELDS, 'id', 'desc');
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      COMPANY_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.company.findMany({
         where,
         skip,
@@ -62,16 +75,11 @@ export class CompaniesService {
       this.prisma.company.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findOne(id: number): Promise<Company> {
@@ -79,6 +87,7 @@ export class CompaniesService {
       where: { id },
       include: {
         internships: {
+          where: { deletedAt: null },
           include: {
             student: {
               include: { user: { select: SAFE_USER_SELECT } },
@@ -86,6 +95,7 @@ export class CompaniesService {
           },
         },
         requests: {
+          where: { deletedAt: null },
           include: {
             student: {
               include: { user: { select: SAFE_USER_SELECT } },

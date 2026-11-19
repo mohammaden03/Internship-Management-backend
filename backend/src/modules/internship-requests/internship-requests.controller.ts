@@ -3,9 +3,11 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
+  Req,
   UseGuards,
   ForbiddenException,
   ParseIntPipe,
@@ -15,10 +17,12 @@ import { InternshipRequestsService } from './internship-requests.service';
 import { CreateInternshipRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { RequestWithContext } from '../../common/observability/request-context.middleware';
 import { Role } from '@prisma/client';
 
 @ApiTags('Internship Requests')
@@ -45,7 +49,7 @@ export class InternshipRequestsController {
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR)
   @ApiOperation({ summary: 'Admin or Professor get all requests with search, pagination and status filter' })
-  @ApiResponse({ status: 200, description: 'Paginated requests' })
+  @ApiPaginatedResponse()
   findAll(@Query() query: PaginationQueryDto) {
     return this.requestsService.findAll(query);
   }
@@ -53,7 +57,7 @@ export class InternshipRequestsController {
   @Get('my')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Student get own internship requests' })
-  @ApiResponse({ status: 200, description: 'List of student requests' })
+  @ApiPaginatedResponse()
   getMyRequests(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: PaginationQueryDto,
@@ -86,7 +90,26 @@ export class InternshipRequestsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRequestStatusDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() req: RequestWithContext,
   ) {
-    return this.requestsService.updateStatus(id, dto, user.userId);
+    return this.requestsService.updateStatus(id, dto, user.userId, {
+      ip: req.ip,
+      requestId: req.requestId,
+    });
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin soft-delete an internship request' })
+  @ApiResponse({ status: 200, description: 'Request soft-deleted' })
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: RequestWithContext,
+  ) {
+    return this.requestsService.remove(id, user.userId, {
+      ip: req.ip,
+      requestId: req.requestId,
+    });
   }
 }

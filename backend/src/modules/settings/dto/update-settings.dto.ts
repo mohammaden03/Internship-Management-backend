@@ -1,26 +1,42 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class UpdateSettingsDto {
-  @ApiPropertyOptional({ example: '۱۴۰۳-۱۴۰۴ نیمسال دوم' })
+  @ApiPropertyOptional({ example: 'دانشگاه سمنان' })
   @IsOptional()
   @IsString()
+  @MaxLength(160)
+  universityName?: string;
+
+  @ApiPropertyOptional({ example: 'تابستان ۱۴۰۳' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
   academicTerm?: string;
 
-  @ApiPropertyOptional({ example: '2025-02-01' })
+  @ApiPropertyOptional({ example: '2024-09-01' })
   @IsOptional()
   @IsString()
+  @MaxLength(32)
   registrationStart?: string;
 
-  @ApiPropertyOptional({ example: '2025-03-01' })
+  @ApiPropertyOptional({ example: '2024-10-15' })
   @IsOptional()
   @IsString()
+  @MaxLength(32)
   registrationEnd?: string;
 
-  @ApiPropertyOptional({ example: '2025-06-30' })
+  @ApiPropertyOptional({ example: '2024-11-01' })
   @IsOptional()
   @IsString()
+  @MaxLength(32)
+  letterDeadline?: string;
+
+  @ApiPropertyOptional({ example: '2025-01-20' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
   gradingDeadline?: string;
 
   @ApiPropertyOptional({ example: 240 })

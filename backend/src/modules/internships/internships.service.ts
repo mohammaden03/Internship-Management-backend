@@ -5,16 +5,29 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { CreateInternshipDto } from './dto/create-internship.dto';
 import { UpdateInternshipDto } from './dto/update-internship.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildCollectionResponse,
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+  validateEnumFilter,
+} from '../../common/utils/query.utils';
+import { assertValidInternshipTransition } from './internship-transitions';
 import { Internship, InternshipStatus, Role } from '@prisma/client';
 
 const INTERNSHIP_SORT_FIELDS = [
   'id',
+  'academicTerm',
   'startDate',
   'endDate',
   'progressPercentage',
@@ -25,18 +38,45 @@ const INTERNSHIP_SORT_FIELDS = [
 
 @Injectable()
 export class InternshipsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private settingsService: SettingsService,
+  ) {}
 
   async create(dto: CreateInternshipDto): Promise<Internship> {
     const existing = await this.prisma.internship.findUnique({
       where: { requestId: dto.requestId },
     });
-    if (existing) {
+    if (existing && !existing.deletedAt) {
       throw new ConflictException('An internship for this request ID already exists');
     }
 
+    const academicTerm =
+      dto.academicTerm?.trim() || (await this.settingsService.getCurrentAcademicTerm());
+    const targetStatus = dto.status ?? InternshipStatus.ACTIVE;
+
+    if (targetStatus === InternshipStatus.ACTIVE) {
+      const existingActive = await this.prisma.internship.findFirst({
+        where: {
+          studentId: dto.studentId,
+          academicTerm,
+          status: InternshipStatus.ACTIVE,
+          deletedAt: null,
+        },
+      });
+      if (existingActive) {
+        throw new ConflictException(
+          `Student already has an ACTIVE internship in academic term '${academicTerm}'`,
+        );
+      }
+    }
+
     return this.prisma.internship.create({
-      data: dto,
+      data: {
+        ...dto,
+        academicTerm,
+        status: targetStatus,
+      },
       include: {
         student: { include: { user: { select: SAFE_USER_SELECT } } },
         professor: { include: { user: { select: SAFE_USER_SELECT } } },
@@ -48,18 +88,25 @@ export class InternshipsService {
   async findAll(
     query: PaginationQueryDto,
     user?: AuthenticatedUser,
-  ): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      INTERNSHIP_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = {};
+    const where: any = { deletedAt: null };
     if (user?.role === Role.PROFESSOR) {
       if (!user.professorId) {
-        return {
-          items: [],
-          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
-        };
+        return buildPaginatedResponse([], 0, page, limit, {
+          searchTerm,
+          sortBy,
+          sortOrder,
+        });
       }
       where.professorId = user.professorId;
     }
@@ -68,19 +115,18 @@ export class InternshipsService {
     if (statusFilter) {
       where.status = statusFilter;
     }
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { company: { name: { contains: query.search, mode: 'insensitive' } } },
-        { student: { user: { firstName: { contains: query.search, mode: 'insensitive' } } } },
-        { student: { user: { lastName: { contains: query.search, mode: 'insensitive' } } } },
-        { student: { studentNumber: { contains: query.search, mode: 'insensitive' } } },
-        { professor: { user: { lastName: { contains: query.search, mode: 'insensitive' } } } },
+        { academicTerm: { contains: searchTerm, mode: 'insensitive' } },
+        { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { studentNumber: { contains: searchTerm, mode: 'insensitive' } } },
+        { professor: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, INTERNSHIP_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.internship.findMany({
         where,
         skip,
@@ -112,21 +158,16 @@ export class InternshipsService {
       this.prisma.internship.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
-  async findByStudent(studentId: number): Promise<Internship[]> {
-    return this.prisma.internship.findMany({
-      where: { studentId },
+  async findByStudent(studentId: number): Promise<PaginatedResponseDto<any>> {
+    const items = await this.prisma.internship.findMany({
+      where: { studentId, deletedAt: null },
       orderBy: { id: 'desc' },
       include: {
         company: true,
@@ -136,26 +177,42 @@ export class InternshipsService {
           },
         },
         weeklyReports: { orderBy: { weekNumber: 'asc' } },
-        documents: true,
+        documents: { where: { deletedAt: null } },
         evaluation: true,
       },
     });
+    return buildCollectionResponse(items);
   }
 
-  async findByProfessor(professorId: number, query: PaginationQueryDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findByProfessor(
+    professorId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      INTERNSHIP_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = { professorId };
+    const where: any = { professorId, deletedAt: null };
     const statusFilter = validateEnumFilter(query.status, InternshipStatus, 'status');
     if (statusFilter) {
       where.status = statusFilter;
     }
+    if (searchTerm) {
+      where.OR = [
+        { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { studentNumber: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
+    }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, INTERNSHIP_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.internship.findMany({
         where,
         skip,
@@ -170,27 +227,22 @@ export class InternshipsService {
           company: true,
           weeklyReports: { orderBy: { weekNumber: 'desc' } },
           evaluation: true,
-          documents: true,
+          documents: { where: { deletedAt: null } },
         },
       }),
       this.prisma.internship.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findOne(id: number): Promise<any> {
-    const internship = await this.prisma.internship.findUnique({
-      where: { id },
+    const internship = await this.prisma.internship.findFirst({
+      where: { id, deletedAt: null },
       include: {
         student: {
           include: {
@@ -207,7 +259,7 @@ export class InternshipsService {
         weeklyReports: {
           orderBy: { weekNumber: 'asc' },
         },
-        documents: true,
+        documents: { where: { deletedAt: null } },
         evaluation: true,
       },
     });
@@ -229,6 +281,26 @@ export class InternshipsService {
       throw new ForbiddenException('Professors can only update internships assigned to them');
     }
 
+    if (dto.status && dto.status !== existing.status) {
+      assertValidInternshipTransition(existing.status, dto.status);
+      if (dto.status === InternshipStatus.ACTIVE) {
+        const anotherActive = await this.prisma.internship.findFirst({
+          where: {
+            id: { not: id },
+            studentId: existing.studentId,
+            academicTerm: existing.academicTerm,
+            status: InternshipStatus.ACTIVE,
+            deletedAt: null,
+          },
+        });
+        if (anotherActive) {
+          throw new ConflictException(
+            `Student already has an ACTIVE internship in academic term '${existing.academicTerm}'`,
+          );
+        }
+      }
+    }
+
     return this.prisma.internship.update({
       where: { id },
       data: dto,
@@ -242,7 +314,10 @@ export class InternshipsService {
 
   async remove(id: number): Promise<{ message: string }> {
     await this.findOne(id);
-    await this.prisma.internship.delete({ where: { id } });
-    return { message: `Internship with ID '${id}' deleted` };
+    await this.prisma.internship.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return { message: `Internship with ID '${id}' archived` };
   }
 }

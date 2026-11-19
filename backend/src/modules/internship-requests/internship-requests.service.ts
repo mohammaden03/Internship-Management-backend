@@ -7,16 +7,29 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { SettingsService } from '../settings/settings.service';
+import { AuditLogsService } from '../../common/audit/audit-logs.service';
 import { CreateInternshipRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+  validateEnumFilter,
+} from '../../common/utils/query.utils';
+import { assertValidRequestTransition } from '../internships/internship-transitions';
 import { RequestStatus, InternshipStatus } from '@prisma/client';
 
 const REQUEST_SORT_FIELDS = [
   'id',
   'title',
+  'academicTerm',
   'startDate',
   'endDate',
   'totalHours',
@@ -25,12 +38,19 @@ const REQUEST_SORT_FIELDS = [
   'updatedAt',
 ] as const;
 
+interface RequestAuditMeta {
+  ip?: string;
+  requestId?: string;
+}
+
 @Injectable()
 export class InternshipRequestsService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private activityLogsService: ActivityLogsService,
+    private settingsService: SettingsService,
+    private auditLogsService: AuditLogsService,
   ) {}
 
   async create(studentId: number, userId: number, dto: CreateInternshipRequestDto) {
@@ -41,12 +61,51 @@ export class InternshipRequestsService {
       throw new NotFoundException(`Company with ID '${dto.companyId}' not found`);
     }
 
+    if (dto.endDate <= dto.startDate) {
+      throw new BadRequestException('endDate must be after startDate');
+    }
+
+    const academicTerm =
+      dto.academicTerm?.trim() || (await this.settingsService.getCurrentAcademicTerm());
+
+    // [A4] Prevent duplicate non-rejected request for the same (student, company, term)
+    const duplicateRequest = await this.prisma.internshipRequest.findFirst({
+      where: {
+        studentId,
+        companyId: dto.companyId,
+        academicTerm,
+        deletedAt: null,
+        status: { not: RequestStatus.REJECTED },
+      },
+    });
+    if (duplicateRequest) {
+      throw new ConflictException(
+        `A non-rejected internship request for this company in term '${academicTerm}' already exists`,
+      );
+    }
+
+    // [A4] Prevent creating a new request if student already has an ACTIVE internship in this term
+    const activeInternship = await this.prisma.internship.findFirst({
+      where: {
+        studentId,
+        academicTerm,
+        status: InternshipStatus.ACTIVE,
+        deletedAt: null,
+      },
+    });
+    if (activeInternship) {
+      throw new ConflictException(
+        `Student already has an ACTIVE internship in academic term '${academicTerm}'`,
+      );
+    }
+
     const request = await this.prisma.internshipRequest.create({
       data: {
         studentId,
         companyId: dto.companyId,
         title: dto.title,
         description: dto.description,
+        academicTerm,
         startDate: dto.startDate,
         endDate: dto.endDate,
         totalHours: dto.totalHours || 240,
@@ -77,30 +136,35 @@ export class InternshipRequestsService {
     return request;
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      REQUEST_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = {};
+    const where: any = { deletedAt: null };
     const statusFilter = validateEnumFilter(query.status, RequestStatus, 'status');
     if (statusFilter) {
       where.status = statusFilter;
     }
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { title: { contains: query.search, mode: 'insensitive' } },
-        { description: { contains: query.search, mode: 'insensitive' } },
-        { company: { name: { contains: query.search, mode: 'insensitive' } } },
-        { student: { user: { firstName: { contains: query.search, mode: 'insensitive' } } } },
-        { student: { user: { lastName: { contains: query.search, mode: 'insensitive' } } } },
-        { student: { studentNumber: { contains: query.search, mode: 'insensitive' } } },
+        { title: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        { academicTerm: { contains: searchTerm, mode: 'insensitive' } },
+        { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { studentNumber: { contains: searchTerm, mode: 'insensitive' } } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, REQUEST_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.internshipRequest.findMany({
         where,
         skip,
@@ -119,39 +183,47 @@ export class InternshipRequestsService {
             },
           },
           internship: {
-            select: { id: true, status: true, progressPercentage: true },
+            select: { id: true, status: true, progressPercentage: true, deletedAt: true },
           },
         },
       }),
       this.prisma.internshipRequest.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
-  async findMyRequests(studentId: number, query: PaginationQueryDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findMyRequests(
+    studentId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      REQUEST_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = { studentId };
+    const where: any = { studentId, deletedAt: null };
     const statusFilter = validateEnumFilter(query.status, RequestStatus, 'status');
     if (statusFilter) {
       where.status = statusFilter;
     }
+    if (searchTerm) {
+      where.OR = [
+        { title: { contains: searchTerm, mode: 'insensitive' } },
+        { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
+    }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, REQUEST_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.internshipRequest.findMany({
         where,
         skip,
@@ -174,21 +246,16 @@ export class InternshipRequestsService {
       this.prisma.internshipRequest.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findOne(id: number) {
-    const request = await this.prisma.internshipRequest.findUnique({
-      where: { id },
+    const request = await this.prisma.internshipRequest.findFirst({
+      where: { id, deletedAt: null },
       include: {
         student: {
           include: {
@@ -216,16 +283,20 @@ export class InternshipRequestsService {
     return request;
   }
 
-  async updateStatus(id: number, dto: UpdateRequestStatusDto, adminUserId: number) {
+  async updateStatus(
+    id: number,
+    dto: UpdateRequestStatusDto,
+    adminUserId: number,
+    meta: RequestAuditMeta = {},
+  ) {
     const request = await this.findOne(id);
 
-    if (request.status !== RequestStatus.PENDING) {
-      throw new BadRequestException(
-        `Internship request has already been finalized with status '${request.status}'`,
-      );
-    }
+    // [A4] Enforce valid transition (PENDING -> APPROVED | REJECTED only; 409 on illegal transition)
+    assertValidRequestTransition(request.status, dto.status);
 
     const studentUserId = request.student.user.id;
+    const academicTerm =
+      request.academicTerm || (await this.settingsService.getCurrentAcademicTerm());
 
     if (dto.status === RequestStatus.APPROVED) {
       if (!dto.professorId) {
@@ -245,8 +316,23 @@ export class InternshipRequestsService {
       const existingInternship = await this.prisma.internship.findUnique({
         where: { requestId: request.id },
       });
-      if (existingInternship) {
+      if (existingInternship && !existingInternship.deletedAt) {
         throw new ConflictException('An internship has already been created for this request');
+      }
+
+      // [A4] Only one ACTIVE internship per student per academic term
+      const existingActiveInTerm = await this.prisma.internship.findFirst({
+        where: {
+          studentId: request.studentId,
+          academicTerm,
+          status: InternshipStatus.ACTIVE,
+          deletedAt: null,
+        },
+      });
+      if (existingActiveInTerm) {
+        throw new ConflictException(
+          `Student already has an ACTIVE internship in academic term '${academicTerm}'`,
+        );
       }
 
       const result = await this.prisma.$transaction(async (tx) => {
@@ -270,6 +356,7 @@ export class InternshipRequestsService {
             professorId: dto.professorId!,
             companyId: request.companyId,
             requestId: request.id,
+            academicTerm,
             startDate: request.startDate,
             endDate: request.endDate,
             progressPercentage: 0,
@@ -302,37 +389,76 @@ export class InternshipRequestsService {
         action: `تأیید درخواست کارآموزی شماره ${String(request.id)} و انتصاب استاد ناظر`,
       });
 
+      await this.auditLogsService.record({
+        actorId: adminUserId,
+        event: 'REQUEST_APPROVED',
+        entityType: 'InternshipRequest',
+        entityId: request.id,
+        ip: meta.ip,
+        requestId: meta.requestId,
+        metadata: {
+          internshipId: result.internship.id,
+          professorId: dto.professorId,
+          academicTerm,
+        },
+      });
+
       return result;
-    } else if (dto.status === RequestStatus.REJECTED) {
-      const updatedReq = await this.prisma.internshipRequest.update({
-        where: { id },
-        data: {
-          status: RequestStatus.REJECTED,
-          rejectionReason: dto.rejectionReason ?? null,
-        },
-        include: {
-          student: { include: { user: { select: SAFE_USER_SELECT } } },
-          professor: { include: { user: { select: SAFE_USER_SELECT } } },
-          company: true,
-        },
-      });
-
-      await this.notificationsService.create({
-        userId: studentUserId,
-        title: 'عدم تأیید درخواست کارآموزی',
-        message: dto.rejectionReason
-          ? `درخواست کارآموزی شما برای شرکت ${request.company.name} رد شد. دلیل: ${dto.rejectionReason}`
-          : `درخواست کارآموزی شما برای شرکت ${request.company.name} مورد تأیید قرار نگرفت.`,
-      });
-
-      await this.activityLogsService.log({
-        userId: adminUserId,
-        action: `رد درخواست کارآموزی شماره ${String(request.id)}`,
-      });
-
-      return updatedReq;
     }
 
-    throw new BadRequestException('Invalid status transition');
+    const updatedReq = await this.prisma.internshipRequest.update({
+      where: { id },
+      data: {
+        status: RequestStatus.REJECTED,
+        rejectionReason: dto.rejectionReason ?? null,
+      },
+      include: {
+        student: { include: { user: { select: SAFE_USER_SELECT } } },
+        professor: { include: { user: { select: SAFE_USER_SELECT } } },
+        company: true,
+      },
+    });
+
+    await this.notificationsService.create({
+      userId: studentUserId,
+      title: 'عدم تأیید درخواست کارآموزی',
+      message: dto.rejectionReason
+        ? `درخواست کارآموزی شما برای شرکت ${request.company.name} رد شد. دلیل: ${dto.rejectionReason}`
+        : `درخواست کارآموزی شما برای شرکت ${request.company.name} مورد تأیید قرار نگرفت.`,
+    });
+
+    await this.activityLogsService.log({
+      userId: adminUserId,
+      action: `رد درخواست کارآموزی شماره ${String(request.id)}`,
+    });
+
+    await this.auditLogsService.record({
+      actorId: adminUserId,
+      event: 'REQUEST_REJECTED',
+      entityType: 'InternshipRequest',
+      entityId: request.id,
+      ip: meta.ip,
+      requestId: meta.requestId,
+      metadata: { rejectionReason: dto.rejectionReason ?? null },
+    });
+
+    return updatedReq;
+  }
+
+  async remove(id: number, adminUserId: number, meta: RequestAuditMeta = {}) {
+    await this.findOne(id);
+    await this.prisma.internshipRequest.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    await this.auditLogsService.record({
+      actorId: adminUserId,
+      event: 'REQUEST_SOFT_DELETED',
+      entityType: 'InternshipRequest',
+      entityId: id,
+      ip: meta.ip,
+      requestId: meta.requestId,
+    });
+    return { message: `Internship Request with ID '${id}' archived` };
   }
 }

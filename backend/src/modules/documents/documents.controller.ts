@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Req,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -21,48 +22,18 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, isAbsolute, join, resolve } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { memoryStorage } from 'multer';
 import { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
-
-const DEFAULT_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
-];
-
-function getUploadDestination(): string {
-  const configured = process.env.UPLOAD_DESTINATION || './uploads/documents';
-  const resolved = isAbsolute(configured) ? configured : resolve(process.cwd(), configured);
-  if (!existsSync(resolved)) {
-    mkdirSync(resolved, { recursive: true });
-  }
-  return resolved;
-}
-
-function getMaxFileSizeBytes(): number {
-  const mb = Number(process.env.MAX_FILE_SIZE_MB || '10');
-  const validMb = Number.isFinite(mb) && mb > 0 ? mb : 10;
-  return Math.floor(validMb * 1024 * 1024);
-}
-
-function getAllowedMimeTypes(): string[] {
-  const raw = process.env.ALLOWED_MIME_TYPES;
-  if (!raw || !raw.trim()) {
-    return DEFAULT_MIME_TYPES;
-  }
-  return raw
-    .split(',')
-    .map((m) => m.trim())
-    .filter(Boolean);
-}
+import { RequestWithContext } from '../../common/observability/request-context.middleware';
+import {
+  getMaxFileSizeBytesFromEnv,
+  sanitizeDownloadFilename,
+} from '../../common/storage/file-validation.utils';
 
 @ApiTags('Documents')
 @ApiBearerAuth('JWT-auth')
@@ -72,7 +43,10 @@ export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Upload an internship document (env-configured MIME types and max size)' })
+  @ApiOperation({
+    summary:
+      'Upload an internship document (validated by extension, MIME type, magic bytes, and size limit; deduplicated per internship by SHA-256)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -86,34 +60,14 @@ export class DocumentsController {
           example: 'INTRODUCTION_LETTER',
         },
       },
+      required: ['file', 'internshipId', 'documentType'],
     },
   })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (_req, _file, cb) => {
-          cb(null, getUploadDestination());
-        },
-        filename: (_req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
-        fileSize: getMaxFileSizeBytes(),
-      },
-      fileFilter: (_req, file, cb) => {
-        const allowedMimeTypes = getAllowedMimeTypes();
-        if (!allowedMimeTypes.includes(file.mimetype)) {
-          return cb(
-            new BadRequestException(
-              `Unsupported file format: ${file.mimetype}. Allowed: ${allowedMimeTypes.join(', ')}`,
-            ),
-            false,
-          );
-        }
-        cb(null, true);
+        fileSize: getMaxFileSizeBytesFromEnv(),
       },
     }),
   )
@@ -121,16 +75,20 @@ export class DocumentsController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() req: RequestWithContext,
   ) {
     if (!file) {
-      throw new BadRequestException('No file uploaded or file rejected by validator');
+      throw new BadRequestException('No file uploaded');
     }
-    return this.documentsService.saveDocument(file, dto, user);
+    return this.documentsService.saveDocument(file, dto, user, {
+      ip: req.ip,
+      requestId: req.requestId,
+    });
   }
 
   @Get('internship/:internshipId')
   @ApiOperation({ summary: 'Get all documents uploaded for an internship (scoped by role)' })
-  @ApiResponse({ status: 200, description: 'List of documents' })
+  @ApiPaginatedResponse(undefined, { paginated: false })
   findByInternship(
     @Param('internshipId', ParseIntPipe) internshipId: number,
     @CurrentUser() user: AuthenticatedUser,
@@ -139,30 +97,36 @@ export class DocumentsController {
   }
 
   @Get('download/:id')
-  @ApiOperation({ summary: 'Download document binary file directly (scoped by role)' })
+  @ApiOperation({
+    summary: 'Download document binary file through authenticated, role-scoped endpoint',
+  })
+  @ApiResponse({ status: 200, description: 'Document binary stream' })
+  @ApiResponse({ status: 404, description: 'Document metadata or backing file not found' })
   async download(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() req: RequestWithContext,
     @Res() res: Response,
   ) {
-    const doc = await this.documentsService.findOne(id, user);
-    const cleanedPath = doc.filePath.replace(/^\/+/, '');
-    const fullPath = join(process.cwd(), cleanedPath);
+    const { doc, buffer } = await this.documentsService.download(id, user, {
+      ip: req.ip,
+      requestId: req.requestId,
+    });
 
-    if (!existsSync(fullPath)) {
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
-      );
-      res.setHeader('Content-Type', 'application/pdf');
-      return res.send(
-        Buffer.from(
-          `%PDF-1.4\n% University Internship Document: ${doc.fileName}\nDocumentType: ${doc.documentType}\nStatus: Verified\n%%EOF`,
-        ),
-      );
-    }
+    const { asciiFallback, utf8Encoded } = sanitizeDownloadFilename(
+      doc.originalName || doc.fileName,
+    );
 
-    return res.download(fullPath, doc.fileName);
+    res.setHeader('Content-Type', doc.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Length', String(buffer.length));
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${utf8Encoded}`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, no-store');
+
+    return res.send(buffer);
   }
 
   @Get(':id')
@@ -176,12 +140,16 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a document (scoped by role)' })
-  @ApiResponse({ status: 200, description: 'Document deleted' })
+  @ApiOperation({ summary: 'Soft-delete a document (scoped by role)' })
+  @ApiResponse({ status: 200, description: 'Document archived' })
   remove(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() req: RequestWithContext,
   ) {
-    return this.documentsService.delete(id, user);
+    return this.documentsService.delete(id, user, {
+      ip: req.ip,
+      requestId: req.requestId,
+    });
   }
 }

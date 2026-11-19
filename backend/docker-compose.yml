@@ -29,22 +29,31 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      NODE_ENV: production
-      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3010}
       API_PREFIX: ${API_PREFIX:-api}
+      LOG_LEVEL: ${LOG_LEVEL:-log}
       APP_NAME: ${APP_NAME:-University Internship Management System API}
       APP_DESCRIPTION: ${APP_DESCRIPTION:-سامانه جامع مدیریت کارآموزی دانشگاه}
       DATABASE_URL: postgresql://${POSTGRES_USER:-internship_user}:${POSTGRES_PASSWORD:-internship_pass_secure}@postgres:5432/${POSTGRES_DB:-internship_db}?schema=public
-      JWT_SECRET: ${JWT_SECRET:-change_me_jwt_secret_key}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (>=32 chars) in .env}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_jwt_refresh_secret_key}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET (>=32 chars, distinct) in .env}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       UPLOAD_DESTINATION: ${UPLOAD_DESTINATION:-./uploads/documents}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
       ALLOWED_MIME_TYPES: ${ALLOWED_MIME_TYPES:-application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png}
-      AUTO_SEED: ${AUTO_SEED:-true}
+      THROTTLE_TTL_MS: ${THROTTLE_TTL_MS:-60000}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-120}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-}
+      AUTO_SEED: ${AUTO_SEED:-false}
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3010}:3010"
     volumes:
       - backend_uploads:/app/uploads
     networks:

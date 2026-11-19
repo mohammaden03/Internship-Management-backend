@@ -4,12 +4,22 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuditLogsService } from '../../common/audit/audit-logs.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
-import { PaginatedResult } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+  validateEnumFilter,
+} from '../../common/utils/query.utils';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -27,7 +37,10 @@ const USER_SORT_FIELDS = [
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async create(dto: CreateUserDto) {
     const existing = await this.prisma.user.findFirst({
@@ -60,18 +73,17 @@ export class UsersService {
     });
   }
 
-  async findAll(query: UsersQueryDto): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAll(query: UsersQueryDto): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
 
-    const where: any = {};
-    if (query.search) {
+    const where: any = { deletedAt: null };
+    if (searchTerm) {
       where.OR = [
-        { firstName: { contains: query.search, mode: 'insensitive' } },
-        { lastName: { contains: query.search, mode: 'insensitive' } },
-        { email: { contains: query.search, mode: 'insensitive' } },
-        { nationalCode: { contains: query.search, mode: 'insensitive' } },
+        { firstName: { contains: searchTerm, mode: 'insensitive' } },
+        { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+        { nationalCode: { contains: searchTerm, mode: 'insensitive' } },
       ];
     }
 
@@ -80,9 +92,15 @@ export class UsersService {
       where.role = roleFilter;
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, USER_SORT_FIELDS, 'id', 'desc');
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      USER_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
@@ -101,21 +119,16 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
       include: {
         student: true,
         professor: true,
@@ -133,8 +146,36 @@ export class UsersService {
     };
   }
 
-  async update(id: number, dto: UpdateUserDto) {
-    await this.findOne(id);
+  async updateMyProfile(userId: number, dto: UpdateMyProfileDto) {
+    await this.findOne(userId);
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.firstName !== undefined ? { firstName: dto.firstName } : {}),
+        ...(dto.lastName !== undefined ? { lastName: dto.lastName } : {}),
+        ...(dto.phoneNumber !== undefined ? { phoneNumber: dto.phoneNumber } : {}),
+      },
+      include: {
+        student: true,
+        professor: true,
+      },
+    });
+
+    const { password, refreshToken, ...result } = updated;
+    return {
+      ...result,
+      studentId: updated.student?.id ?? null,
+      professorId: updated.professor?.id ?? null,
+    };
+  }
+
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    actorId?: number,
+    meta: { ip?: string | null; requestId?: string | null } = {},
+  ) {
+    const existing = await this.findOne(id);
 
     const data: any = { ...dto };
     if (dto.password) {
@@ -144,16 +185,59 @@ export class UsersService {
       data.email = dto.email.toLowerCase();
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data,
       select: SAFE_USER_SELECT,
     });
+
+    if (dto.role && dto.role !== existing.role) {
+      await this.auditLogsService.record({
+        actorId: actorId ?? null,
+        event: 'ROLE_CHANGED',
+        entityType: 'User',
+        entityId: id,
+        ip: meta.ip,
+        requestId: meta.requestId,
+        metadata: { from: existing.role, to: dto.role },
+      });
+    }
+
+    return updated;
   }
 
-  async remove(id: number) {
+  async remove(
+    id: number,
+    actorId?: number,
+    meta: { ip?: string | null; requestId?: string | null } = {},
+  ) {
     await this.findOne(id);
-    await this.prisma.user.delete({ where: { id } });
-    return { message: `User with ID '${id}' successfully deleted` };
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          deletedAt: now,
+          isActive: false,
+          refreshToken: null,
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: now },
+      });
+    });
+
+    await this.auditLogsService.record({
+      actorId: actorId ?? null,
+      event: 'USER_SOFT_DELETED',
+      entityType: 'User',
+      entityId: id,
+      ip: meta.ip,
+      requestId: meta.requestId,
+    });
+
+    return { message: `User with ID '${id}' successfully deactivated and soft-deleted` };
   }
 }

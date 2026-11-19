@@ -3,9 +3,10 @@ import { InternshipRequestsService } from './internship-requests.service';
 import { InternshipRequestsController } from './internship-requests.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [NotificationsModule, ActivityLogsModule],
+  imports: [NotificationsModule, ActivityLogsModule, SettingsModule],
   controllers: [InternshipRequestsController],
   providers: [InternshipRequestsService],
   exports: [InternshipRequestsService],

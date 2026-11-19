@@ -15,7 +15,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { ProfessorsService } from './professors.service';
 import { CreateProfessorDto } from './dto/create-professor.dto';
 import { UpdateProfessorDto } from './dto/update-professor.dto';
+import { UpdateMyProfessorProfileDto } from './dto/update-my-professor-profile.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,7 +42,7 @@ export class ProfessorsController {
   @Get()
   @Roles(Role.ADMIN, Role.PROFESSOR)
   @ApiOperation({ summary: 'Get all professors with search and pagination' })
-  @ApiResponse({ status: 200, description: 'Paginated professors' })
+  @ApiPaginatedResponse(undefined, { paginated: true })
   findAll(@Query() query: PaginationQueryDto) {
     return this.professorsService.findAll(query);
   }
@@ -53,10 +55,21 @@ export class ProfessorsController {
     return this.professorsService.findByUserId(user.userId);
   }
 
+  @Patch('me')
+  @Roles(Role.PROFESSOR)
+  @ApiOperation({ summary: 'Professor update own editable profile fields only' })
+  @ApiResponse({ status: 200, description: 'Updated own professor profile' })
+  updateMyProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateMyProfessorProfileDto,
+  ) {
+    return this.professorsService.updateMyProfile(user.userId, dto);
+  }
+
   @Get('assigned-students')
   @Roles(Role.PROFESSOR)
   @ApiOperation({ summary: 'Professor view all internships and students assigned to them' })
-  @ApiResponse({ status: 200, description: 'Assigned student internships' })
+  @ApiPaginatedResponse(undefined, { paginated: true })
   getAssignedStudents(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: PaginationQueryDto,

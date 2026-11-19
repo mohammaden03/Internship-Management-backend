@@ -28,10 +28,37 @@ CREATE TABLE "users" (
     "role" "Role" NOT NULL DEFAULT 'STUDENT',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "refreshToken" TEXT,
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "refresh_tokens" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "familyId" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "revokedAt" TIMESTAMP(3),
+    "replacedByHash" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "password_reset_tokens" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -82,6 +109,7 @@ CREATE TABLE "internship_requests" (
     "studentId" INTEGER NOT NULL,
     "companyId" INTEGER NOT NULL,
     "professorId" INTEGER,
+    "academicTerm" TEXT NOT NULL DEFAULT 'تابستان ۱۴۰۳',
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "startDate" TIMESTAMP(3) NOT NULL,
@@ -89,6 +117,7 @@ CREATE TABLE "internship_requests" (
     "totalHours" INTEGER NOT NULL DEFAULT 240,
     "status" "RequestStatus" NOT NULL DEFAULT 'PENDING',
     "rejectionReason" TEXT,
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -102,10 +131,12 @@ CREATE TABLE "internships" (
     "professorId" INTEGER NOT NULL,
     "companyId" INTEGER NOT NULL,
     "requestId" INTEGER NOT NULL,
+    "academicTerm" TEXT NOT NULL DEFAULT 'تابستان ۱۴۰۳',
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "progressPercentage" INTEGER NOT NULL DEFAULT 0,
     "status" "InternshipStatus" NOT NULL DEFAULT 'ACTIVE',
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -136,8 +167,14 @@ CREATE TABLE "documents" (
     "id" SERIAL NOT NULL,
     "internshipId" INTEGER NOT NULL,
     "fileName" TEXT NOT NULL,
+    "originalName" TEXT NOT NULL DEFAULT '',
     "filePath" TEXT NOT NULL,
+    "storageKey" TEXT,
+    "mimeType" TEXT NOT NULL DEFAULT 'application/pdf',
+    "size" INTEGER NOT NULL DEFAULT 0,
+    "sha256" TEXT,
     "documentType" "DocumentType" NOT NULL,
+    "deletedAt" TIMESTAMP(3),
     "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "documents_pkey" PRIMARY KEY ("id")
@@ -182,6 +219,21 @@ CREATE TABLE "activity_logs" (
 );
 
 -- CreateTable
+CREATE TABLE "audit_logs" (
+    "id" SERIAL NOT NULL,
+    "actorId" INTEGER,
+    "event" TEXT NOT NULL,
+    "entityType" TEXT,
+    "entityId" TEXT,
+    "ip" TEXT,
+    "requestId" TEXT,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "system_settings" (
     "id" SERIAL NOT NULL,
     "key" TEXT NOT NULL,
@@ -198,6 +250,30 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 CREATE UNIQUE INDEX "users_nationalCode_key" ON "users"("nationalCode");
 
 -- CreateIndex
+CREATE INDEX "users_deletedAt_idx" ON "users"("deletedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "refresh_tokens_tokenHash_key" ON "refresh_tokens"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "refresh_tokens_userId_idx" ON "refresh_tokens"("userId");
+
+-- CreateIndex
+CREATE INDEX "refresh_tokens_familyId_idx" ON "refresh_tokens"("familyId");
+
+-- CreateIndex
+CREATE INDEX "refresh_tokens_expiresAt_idx" ON "refresh_tokens"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "password_reset_tokens_tokenHash_key" ON "password_reset_tokens"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "password_reset_tokens_userId_idx" ON "password_reset_tokens"("userId");
+
+-- CreateIndex
+CREATE INDEX "password_reset_tokens_expiresAt_idx" ON "password_reset_tokens"("expiresAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "students_studentNumber_key" ON "students"("studentNumber");
 
 -- CreateIndex
@@ -207,16 +283,52 @@ CREATE UNIQUE INDEX "students_userId_key" ON "students"("userId");
 CREATE UNIQUE INDEX "professors_userId_key" ON "professors"("userId");
 
 -- CreateIndex
+CREATE INDEX "internship_requests_deletedAt_idx" ON "internship_requests"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "internship_requests_studentId_companyId_academicTerm_idx" ON "internship_requests"("studentId", "companyId", "academicTerm");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "internships_requestId_key" ON "internships"("requestId");
+
+-- CreateIndex
+CREATE INDEX "internships_deletedAt_idx" ON "internships"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "internships_studentId_academicTerm_status_idx" ON "internships"("studentId", "academicTerm", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "weekly_reports_internshipId_weekNumber_key" ON "weekly_reports"("internshipId", "weekNumber");
 
 -- CreateIndex
+CREATE INDEX "documents_deletedAt_idx" ON "documents"("deletedAt");
+
+-- CreateIndex
+CREATE INDEX "documents_internshipId_sha256_idx" ON "documents"("internshipId", "sha256");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "evaluations_internshipId_key" ON "evaluations"("internshipId");
 
 -- CreateIndex
+CREATE INDEX "audit_logs_actorId_idx" ON "audit_logs"("actorId");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_event_idx" ON "audit_logs"("event");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_requestId_idx" ON "audit_logs"("requestId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "system_settings_key_key" ON "system_settings"("key");
+
+-- AddForeignKey
+ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "students" ADD CONSTRAINT "students_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -259,4 +371,7 @@ ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 

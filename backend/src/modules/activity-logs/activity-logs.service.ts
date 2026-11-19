@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+} from '../../common/utils/query.utils';
 import { ActivityLog } from '@prisma/client';
 
 const ACTIVITY_LOG_SORT_FIELDS = ['id', 'action', 'createdAt'] as const;
@@ -21,24 +29,28 @@ export class ActivityLogsService {
     });
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      ACTIVITY_LOG_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
     const where: any = {};
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { action: { contains: query.search, mode: 'insensitive' } },
-        { user: { firstName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { lastName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+        { action: { contains: searchTerm, mode: 'insensitive' } },
+        { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { email: { contains: searchTerm, mode: 'insensitive' } } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, ACTIVITY_LOG_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.activityLog.findMany({
         where,
         skip,
@@ -51,31 +63,33 @@ export class ActivityLogsService {
       this.prisma.activityLog.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
-  async findByUser(userId: number, query: PaginationQueryDto): Promise<PaginatedResult<ActivityLog>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findByUser(
+    userId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<ActivityLog>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      ACTIVITY_LOG_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
     const where: any = { userId };
-    if (query.search) {
-      where.action = { contains: query.search, mode: 'insensitive' };
+    if (searchTerm) {
+      where.action = { contains: searchTerm, mode: 'insensitive' };
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, ACTIVITY_LOG_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.activityLog.findMany({
         where,
         skip,
@@ -85,15 +99,10 @@ export class ActivityLogsService {
       this.prisma.activityLog.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 }

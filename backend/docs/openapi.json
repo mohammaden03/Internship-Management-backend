@@ -1,0 +1,4893 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/audit-logs": {
+      "get": {
+        "operationId": "AuditLogsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin query structured security audit logs (login, password reset, role changes, approvals, document access)",
+        "tags": [
+          "Audit Logs"
+        ]
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "operationId": "MetricsController_getMetrics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Runtime HTTP metrics snapshot"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin get lightweight HTTP request, latency, and error-bucket metrics",
+        "tags": [
+          "Observability"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service process is alive"
+          }
+        },
+        "summary": "Service liveness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Service and database are ready"
+          },
+          "503": {
+            "description": "Database connectivity check failed"
+          }
+        },
+        "summary": "Service readiness probe verifying database connectivity (SELECT 1)",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/dashboard/stats": {
+      "get": {
+        "operationId": "DashboardController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Dashboard counts and KPIs"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin get real-time system statistics",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/settings/public": {
+      "get": {
+        "operationId": "SettingsController_getPublicSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Public system settings summary"
+          }
+        },
+        "summary": "Get public academic term, university name, and deadlines (no auth required)",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "SettingsController_getSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current system settings"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get full system settings (any authenticated user)",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "patch": {
+        "operationId": "SettingsController_updateSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated system settings"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin update system settings",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Student successfully registered and tokens returned"
+          },
+          "409": {
+            "description": "Email, nationalCode, or studentNumber already exists"
+          }
+        },
+        "summary": "Public student self-registration (always assigns STUDENT role)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, tokens returned"
+          },
+          "401": {
+            "description": "Invalid credentials or inactive account"
+          },
+          "429": {
+            "description": "Too many login attempts"
+          }
+        },
+        "summary": "Authenticate user with identifier & password, obtain JWT Access & Refresh tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current authenticated user profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get authenticated user profile including student/professor details",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/refresh-token": {
+      "post": {
+        "operationId": "AuthController_refreshToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens renewed and rotated"
+          },
+          "401": {
+            "description": "Refresh token expired, invalid, or reused"
+          }
+        },
+        "summary": "Rotate refresh token and renew JWT access token (revokes family on reuse)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens renewed and rotated"
+          },
+          "401": {
+            "description": "Refresh token expired, invalid, or reused"
+          }
+        },
+        "summary": "Alias of /auth/refresh-token to renew and rotate JWT tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Recovery request accepted"
+          }
+        },
+        "summary": "Initiate password recovery flow (always returns 202 without user enumeration)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password successfully reset"
+          },
+          "400": {
+            "description": "Invalid, used, or expired reset token"
+          }
+        },
+        "summary": "Reset password using a valid one-time reset token and revoke all active sessions",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successfully logged out"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Revoke all active refresh tokens and log out current user",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/activity-logs": {
+      "get": {
+        "operationId": "ActivityLogsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin get all audit activity logs with pagination, user details, and search",
+        "tags": [
+          "Activity Logs"
+        ]
+      }
+    },
+    "/api/activity-logs/my": {
+      "get": {
+        "operationId": "ActivityLogsController_findMyLogs",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get current user personal activity logs",
+        "tags": [
+          "Activity Logs"
+        ]
+      }
+    },
+    "/api/notifications/my": {
+      "get": {
+        "operationId": "NotificationsController_getMyNotifications",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get current user notifications with pagination & search",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "post": {
+        "operationId": "NotificationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification created successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin create custom notification for a user",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Mark all notifications of current user as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Mark specific notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/users": {
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin create a new user (Student, Professor, or Admin)",
+        "tags": [
+          "Users"
+        ]
+      },
+      "get": {
+        "operationId": "UsersController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "description": "Filter users by role",
+            "schema": {
+              "enum": [
+                "ADMIN",
+                "PROFESSOR",
+                "STUDENT"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin get all active users with search, pagination, sorting and role filter",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/profile/me": {
+      "get": {
+        "operationId": "UsersController_getMyProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get current logged-in user profile details",
+        "tags": [
+          "Users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMyProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated own profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update own editable user profile fields (firstName, lastName, phoneNumber only)",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "operationId": "UsersController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin get user by ID",
+        "tags": [
+          "Users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin update user details, role or active status",
+        "tags": [
+          "Users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User soft-deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin soft-delete a user (preserves historical records)",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/students": {
+      "post": {
+        "operationId": "StudentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStudentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Student created"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin create a student profile",
+        "tags": [
+          "Students"
+        ]
+      },
+      "get": {
+        "operationId": "StudentsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin or Professor get all students with pagination, search, and sorting",
+        "tags": [
+          "Students"
+        ]
+      }
+    },
+    "/api/students/me": {
+      "get": {
+        "operationId": "StudentsController_getMyProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Own student profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student get own full academic profile and internship status",
+        "tags": [
+          "Students"
+        ]
+      },
+      "patch": {
+        "operationId": "StudentsController_updateMyProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyStudentProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated own student profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student update own editable profile fields only",
+        "tags": [
+          "Students"
+        ]
+      }
+    },
+    "/api/students/{id}": {
+      "get": {
+        "operationId": "StudentsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get student details by ID (Student can only access own profile)",
+        "tags": [
+          "Students"
+        ]
+      },
+      "patch": {
+        "operationId": "StudentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStudentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated student"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin update student details",
+        "tags": [
+          "Students"
+        ]
+      },
+      "delete": {
+        "operationId": "StudentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student profile deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin delete student profile",
+        "tags": [
+          "Students"
+        ]
+      }
+    },
+    "/api/professors": {
+      "post": {
+        "operationId": "ProfessorsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfessorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Professor profile created"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin create a professor profile",
+        "tags": [
+          "Professors"
+        ]
+      },
+      "get": {
+        "operationId": "ProfessorsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all professors with search and pagination",
+        "tags": [
+          "Professors"
+        ]
+      }
+    },
+    "/api/professors/me": {
+      "get": {
+        "operationId": "ProfessorsController_getMyProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Own professor profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor get own profile and supervised internships",
+        "tags": [
+          "Professors"
+        ]
+      },
+      "patch": {
+        "operationId": "ProfessorsController_updateMyProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfessorProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated own professor profile"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor update own editable profile fields only",
+        "tags": [
+          "Professors"
+        ]
+      }
+    },
+    "/api/professors/assigned-students": {
+      "get": {
+        "operationId": "ProfessorsController_getAssignedStudents",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor view all internships and students assigned to them",
+        "tags": [
+          "Professors"
+        ]
+      }
+    },
+    "/api/professors/{id}": {
+      "get": {
+        "operationId": "ProfessorsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Professor details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get professor profile by ID",
+        "tags": [
+          "Professors"
+        ]
+      },
+      "patch": {
+        "operationId": "ProfessorsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfessorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Professor updated"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin update professor details",
+        "tags": [
+          "Professors"
+        ]
+      },
+      "delete": {
+        "operationId": "ProfessorsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Professor profile deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin delete professor profile",
+        "tags": [
+          "Professors"
+        ]
+      }
+    },
+    "/api/companies": {
+      "post": {
+        "operationId": "CompaniesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCompanyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Company created successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin register a new hosting company",
+        "tags": [
+          "Companies"
+        ]
+      },
+      "get": {
+        "operationId": "CompaniesController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all companies with search, sorting and pagination",
+        "tags": [
+          "Companies"
+        ]
+      }
+    },
+    "/api/companies/{id}": {
+      "get": {
+        "operationId": "CompaniesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Company profile details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get company profile by ID",
+        "tags": [
+          "Companies"
+        ]
+      },
+      "patch": {
+        "operationId": "CompaniesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCompanyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Company updated"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin update company profile details",
+        "tags": [
+          "Companies"
+        ]
+      },
+      "delete": {
+        "operationId": "CompaniesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Company deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin delete company profile",
+        "tags": [
+          "Companies"
+        ]
+      }
+    },
+    "/api/internship-requests": {
+      "post": {
+        "operationId": "InternshipRequestsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInternshipRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Request created in PENDING state"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student submit an internship request for a company",
+        "tags": [
+          "Internship Requests"
+        ]
+      },
+      "get": {
+        "operationId": "InternshipRequestsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin or Professor get all requests with search, pagination and status filter",
+        "tags": [
+          "Internship Requests"
+        ]
+      }
+    },
+    "/api/internship-requests/my": {
+      "get": {
+        "operationId": "InternshipRequestsController_getMyRequests",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student get own internship requests",
+        "tags": [
+          "Internship Requests"
+        ]
+      }
+    },
+    "/api/internship-requests/{id}": {
+      "get": {
+        "operationId": "InternshipRequestsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get specific internship request by ID",
+        "tags": [
+          "Internship Requests"
+        ]
+      },
+      "delete": {
+        "operationId": "InternshipRequestsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request soft-deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin soft-delete an internship request",
+        "tags": [
+          "Internship Requests"
+        ]
+      }
+    },
+    "/api/internship-requests/{id}/status": {
+      "patch": {
+        "operationId": "InternshipRequestsController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRequestStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request status updated"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin approve or reject request (Approving auto-creates active Internship and assigns supervising professor)",
+        "tags": [
+          "Internship Requests"
+        ]
+      }
+    },
+    "/api/internships": {
+      "post": {
+        "operationId": "InternshipsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInternshipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Internship created"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin manually create an internship",
+        "tags": [
+          "Internships"
+        ]
+      },
+      "get": {
+        "operationId": "InternshipsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin or Professor get internships with search, pagination, and status filter",
+        "tags": [
+          "Internships"
+        ]
+      }
+    },
+    "/api/internships/my": {
+      "get": {
+        "operationId": "InternshipsController_getMyInternships",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "type": "null",
+                          "nullable": true,
+                          "example": null
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student view own internship records with reports, documents, and evaluation",
+        "tags": [
+          "Internships"
+        ]
+      }
+    },
+    "/api/internships/supervised": {
+      "get": {
+        "operationId": "InternshipsController_getSupervisedInternships",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor view all internships under their academic supervision",
+        "tags": [
+          "Internships"
+        ]
+      }
+    },
+    "/api/internships/{id}": {
+      "get": {
+        "operationId": "InternshipsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Internship details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get full internship details by ID",
+        "tags": [
+          "Internships"
+        ]
+      },
+      "patch": {
+        "operationId": "InternshipsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInternshipDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Internship updated"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin or Professor update progress percentage or status",
+        "tags": [
+          "Internships"
+        ]
+      },
+      "delete": {
+        "operationId": "InternshipsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Internship soft-deleted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Admin soft-delete an internship record",
+        "tags": [
+          "Internships"
+        ]
+      }
+    },
+    "/api/weekly-reports": {
+      "post": {
+        "operationId": "WeeklyReportsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWeeklyReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Weekly report submitted"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Student submit a weekly report",
+        "tags": [
+          "Weekly Reports"
+        ]
+      },
+      "get": {
+        "operationId": "WeeklyReportsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get weekly reports scoped by role with status filter, pagination and search",
+        "tags": [
+          "Weekly Reports"
+        ]
+      }
+    },
+    "/api/weekly-reports/internship/{internshipId}": {
+      "get": {
+        "operationId": "WeeklyReportsController_findByInternship",
+        "parameters": [
+          {
+            "name": "internshipId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "type": "null",
+                          "nullable": true,
+                          "example": null
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all weekly reports for an internship (scoped by role)",
+        "tags": [
+          "Weekly Reports"
+        ]
+      }
+    },
+    "/api/weekly-reports/{id}": {
+      "get": {
+        "operationId": "WeeklyReportsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Weekly report details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get specific weekly report details (scoped by role)",
+        "tags": [
+          "Weekly Reports"
+        ]
+      }
+    },
+    "/api/weekly-reports/{id}/review": {
+      "patch": {
+        "operationId": "WeeklyReportsController_review",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewWeeklyReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Report reviewed"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor or Admin review a weekly report (APPROVED, REJECTED, or NEEDS_REVISION)",
+        "tags": [
+          "Weekly Reports"
+        ]
+      }
+    },
+    "/api/documents/upload": {
+      "post": {
+        "operationId": "DocumentsController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "internshipId": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "INTRODUCTION_LETTER",
+                      "CONTRACT",
+                      "START_FORM",
+                      "FINAL_REPORT",
+                      "OTHER"
+                    ],
+                    "example": "INTRODUCTION_LETTER"
+                  }
+                },
+                "required": [
+                  "file",
+                  "internshipId",
+                  "documentType"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Upload an internship document (validated by extension, MIME type, magic bytes, and size limit; deduplicated per internship by SHA-256)",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/documents/internship/{internshipId}": {
+      "get": {
+        "operationId": "DocumentsController_findByInternship",
+        "parameters": [
+          {
+            "name": "internshipId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "type": "null",
+                          "nullable": true,
+                          "example": null
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get all documents uploaded for an internship (scoped by role)",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/documents/download/{id}": {
+      "get": {
+        "operationId": "DocumentsController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document binary stream"
+          },
+          "404": {
+            "description": "Document metadata or backing file not found"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Download document binary file through authenticated, role-scoped endpoint",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "operationId": "DocumentsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document metadata"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get document metadata by ID (scoped by role)",
+        "tags": [
+          "Documents"
+        ]
+      },
+      "delete": {
+        "operationId": "DocumentsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document archived"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Soft-delete a document (scoped by role)",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/evaluations": {
+      "post": {
+        "operationId": "EvaluationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Evaluation created and internship completed"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Professor submit final evaluation for an assigned internship (auto-calculates weighted score and completes internship)",
+        "tags": [
+          "Evaluations"
+        ]
+      },
+      "get": {
+        "operationId": "EvaluationsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page (automatically capped at 100)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search keyword across allowed textual fields (max 100 chars)",
+            "schema": {
+              "example": "software",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Field to sort by (validated against per-endpoint allow-list; defaults to id)",
+            "schema": {
+              "example": "id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Sort direction",
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by entity status (validated against resource enum)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection response with uniform { items, meta } shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaDto",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "meta"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get submitted evaluations scoped by role with pagination & search",
+        "tags": [
+          "Evaluations"
+        ]
+      }
+    },
+    "/api/evaluations/internship/{internshipId}": {
+      "get": {
+        "operationId": "EvaluationsController_findByInternship",
+        "parameters": [
+          {
+            "name": "internshipId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Internship evaluation"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get evaluation for specific internship (scoped by role)",
+        "tags": [
+          "Evaluations"
+        ]
+      }
+    },
+    "/api/evaluations/{id}": {
+      "get": {
+        "operationId": "EvaluationsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evaluation details"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Get evaluation details by evaluation ID (scoped by role)",
+        "tags": [
+          "Evaluations"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "University Internship Management System API",
+    "description": "سامانه جامع مدیریت کارآموزی دانشگاه",
+    "version": "2.0.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Liveness (/health) and database readiness (/health/ready) probes"
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication, JWT login, registration, rotating refresh tokens, password reset, me and logout"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Admin system statistics and counts"
+    },
+    {
+      "name": "Settings",
+      "description": "Persistent university and academic-term settings"
+    },
+    {
+      "name": "Users",
+      "description": "User management, self-profile updates and admin controls"
+    },
+    {
+      "name": "Students",
+      "description": "Student academic profiles, self-profile updates and personal dashboard"
+    },
+    {
+      "name": "Professors",
+      "description": "Professor profiles, self-profile updates and assigned students"
+    },
+    {
+      "name": "Companies",
+      "description": "Hosting corporate partners, industries, cities and company supervisors"
+    },
+    {
+      "name": "Internship Requests",
+      "description": "Student internship application lifecycle and approval workflow"
+    },
+    {
+      "name": "Internships",
+      "description": "Active internship supervision, progress tracking and state transitions"
+    },
+    {
+      "name": "Weekly Reports",
+      "description": "Weekly progress reporting, student submissions and professor reviews"
+    },
+    {
+      "name": "Documents",
+      "description": "Authenticated document upload/download with magic-byte validation and deduplication"
+    },
+    {
+      "name": "Evaluations",
+      "description": "Final academic evaluations, 5-criteria grading and weighted scoring formulas"
+    },
+    {
+      "name": "Notifications",
+      "description": "Automated system notifications and read receipts"
+    },
+    {
+      "name": "Activity Logs",
+      "description": "Application activity history"
+    },
+    {
+      "name": "Audit Logs",
+      "description": "Security & governance audit trail (ADMIN)"
+    },
+    {
+      "name": "Observability",
+      "description": "In-process request/latency/status metrics (ADMIN)"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "name": "Authorization",
+        "description": "Enter your JWT access token (Bearer <token>)",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "example": 25,
+            "description": "Total matching items"
+          },
+          "page": {
+            "type": "number",
+            "example": 1,
+            "description": "Current 1-based page number"
+          },
+          "limit": {
+            "type": "number",
+            "example": 10,
+            "description": "Page size (capped at 100)"
+          },
+          "totalPages": {
+            "type": "number",
+            "example": 3,
+            "description": "Total number of pages"
+          },
+          "searchTerm": {
+            "type": "string",
+            "example": "software",
+            "nullable": true
+          },
+          "sortBy": {
+            "type": "string",
+            "example": "id",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "example": "desc",
+            "nullable": true
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "UpdateSettingsDto": {
+        "type": "object",
+        "properties": {
+          "universityName": {
+            "type": "string",
+            "example": "دانشگاه سمنان"
+          },
+          "academicTerm": {
+            "type": "string",
+            "example": "تابستان ۱۴۰۳"
+          },
+          "registrationStart": {
+            "type": "string",
+            "example": "2024-09-01"
+          },
+          "registrationEnd": {
+            "type": "string",
+            "example": "2024-10-15"
+          },
+          "letterDeadline": {
+            "type": "string",
+            "example": "2024-11-01"
+          },
+          "gradingDeadline": {
+            "type": "string",
+            "example": "2025-01-20"
+          },
+          "minHours": {
+            "type": "number",
+            "example": 240
+          },
+          "maxWeeklyHours": {
+            "type": "number",
+            "example": 40
+          },
+          "autoIssueLetter": {
+            "type": "boolean",
+            "example": true
+          },
+          "insuranceEnabled": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "محمد"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "رضایی"
+          },
+          "email": {
+            "type": "string",
+            "example": "m.rezaei@semnan.ac.ir"
+          },
+          "nationalCode": {
+            "type": "string",
+            "example": "0020000001",
+            "description": "کد ملی ده‌رقمی معتبر کاربر"
+          },
+          "password": {
+            "type": "string",
+            "example": "Password123@",
+            "minLength": 8,
+            "maxLength": 72,
+            "description": "رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و کاراکتر ویژه باشد."
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09121234567"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "PROFESSOR",
+              "STUDENT"
+            ],
+            "default": "STUDENT",
+            "description": "Public registration always assigns STUDENT role regardless of input"
+          },
+          "studentNumber": {
+            "type": "string",
+            "example": "401123456"
+          },
+          "faculty": {
+            "type": "string",
+            "example": "دانشکده مهندسی کامپیوتر"
+          },
+          "major": {
+            "type": "string",
+            "example": "مهندسی نرم‌افزار"
+          },
+          "degreeLevel": {
+            "type": "string",
+            "example": "کارشناسی"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "email",
+          "nationalCode",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "شناسه ورود کاربر (کد ملی، شماره دانشجویی یا ایمیل)",
+            "example": "0021345678",
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string",
+            "description": "رمز عبور حساب کاربری",
+            "example": "Password123@",
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "identifier",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Valid JWT Refresh Token"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "User identifier (email, national code, or student number)",
+            "example": "m.ahmadi@semnan.ac.ir"
+          },
+          "email": {
+            "type": "string",
+            "description": "User email address",
+            "example": "m.ahmadi@semnan.ac.ir"
+          }
+        }
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "One-time password reset token delivered via email",
+            "example": "a1b2c3d4e5f6..."
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و کاراکتر ویژه باشد.",
+            "example": "NewStrongPass123@",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "CreateNotificationDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "description": "Target user ID",
+            "example": 4
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title",
+            "example": "تأیید درخواست کارآموزی"
+          },
+          "message": {
+            "type": "string",
+            "description": "Notification message body",
+            "example": "درخواست کارآموزی شما در شرکت فناوران هوشمند تأیید گردید."
+          }
+        },
+        "required": [
+          "userId",
+          "title",
+          "message"
+        ]
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "علی"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "احمدی"
+          },
+          "email": {
+            "type": "string",
+            "example": "admin@university.ac.ir"
+          },
+          "nationalCode": {
+            "type": "string",
+            "example": "0012345678",
+            "description": "کد ملی ده‌رقمی"
+          },
+          "password": {
+            "type": "string",
+            "example": "Password123!"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09121112233"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "PROFESSOR",
+              "STUDENT"
+            ],
+            "default": "STUDENT"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "email",
+          "nationalCode",
+          "password",
+          "role"
+        ]
+      },
+      "UpdateMyProfileDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "علی"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "احمدی"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09121112233"
+          }
+        }
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "علی"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "احمدی"
+          },
+          "email": {
+            "type": "string",
+            "example": "new-email@university.ac.ir"
+          },
+          "password": {
+            "type": "string",
+            "example": "NewPassword123!"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09121112233"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "PROFESSOR",
+              "STUDENT"
+            ]
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "CreateStudentDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "example": 4
+          },
+          "studentNumber": {
+            "type": "string",
+            "example": "400105432"
+          },
+          "faculty": {
+            "type": "string",
+            "example": "دانشکده مهندسی کامپیوتر"
+          },
+          "major": {
+            "type": "string",
+            "example": "مهندسی نرم‌افزار"
+          },
+          "degreeLevel": {
+            "type": "string",
+            "example": "کارشناسی"
+          }
+        },
+        "required": [
+          "userId",
+          "studentNumber",
+          "faculty",
+          "major",
+          "degreeLevel"
+        ]
+      },
+      "UpdateMyStudentProfileDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "محمد"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "احمدی"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09121234567"
+          },
+          "faculty": {
+            "type": "string",
+            "example": "دانشکده مهندسی کامپیوتر"
+          },
+          "major": {
+            "type": "string",
+            "example": "مهندسی نرم‌افزار"
+          },
+          "degreeLevel": {
+            "type": "string",
+            "example": "کارشناسی"
+          }
+        }
+      },
+      "UpdateStudentDto": {
+        "type": "object",
+        "properties": {
+          "studentNumber": {
+            "type": "string",
+            "example": "99123401"
+          },
+          "faculty": {
+            "type": "string",
+            "example": "دانشکده مهندسی کامپیوتر"
+          },
+          "major": {
+            "type": "string",
+            "example": "مهندسی هوش مصنوعی"
+          },
+          "degreeLevel": {
+            "type": "string",
+            "example": "کارشناسی ارشد"
+          }
+        }
+      },
+      "CreateProfessorDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "number",
+            "example": 2
+          },
+          "department": {
+            "type": "string",
+            "example": "مهندسی کامپیوتر و فناوری اطلاعات"
+          },
+          "academicRank": {
+            "type": "string",
+            "example": "استاد تمام"
+          }
+        },
+        "required": [
+          "userId",
+          "department",
+          "academicRank"
+        ]
+      },
+      "UpdateMyProfessorProfileDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "محمد"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "رضایی"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "09127894561"
+          },
+          "department": {
+            "type": "string",
+            "example": "مهندسی کامپیوتر"
+          },
+          "academicRank": {
+            "type": "string",
+            "example": "دانشیار"
+          }
+        }
+      },
+      "UpdateProfessorDto": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string",
+            "example": "مهندسی کامپیوتر و هوش مصنوعی"
+          },
+          "academicRank": {
+            "type": "string",
+            "example": "استاد تمام"
+          }
+        }
+      },
+      "CreateCompanyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "دیجی‌کالا"
+          },
+          "industry": {
+            "type": "string",
+            "example": "تجارت الکترونیک و توسعه نرم‌افزار"
+          },
+          "city": {
+            "type": "string",
+            "example": "تهران"
+          },
+          "address": {
+            "type": "string",
+            "example": "تهران، خیابان گاندی، خیابان بیست و یکم، پلاک ۲۸"
+          },
+          "phone": {
+            "type": "string",
+            "example": "02161930000"
+          },
+          "supervisorName": {
+            "type": "string",
+            "example": "مهندس سعید پورعلی"
+          },
+          "supervisorPhone": {
+            "type": "string",
+            "example": "09123456789"
+          }
+        },
+        "required": [
+          "name",
+          "industry",
+          "city",
+          "address",
+          "phone",
+          "supervisorName",
+          "supervisorPhone"
+        ]
+      },
+      "UpdateCompanyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "دیجی‌کالا"
+          },
+          "industry": {
+            "type": "string",
+            "example": "تجارت الکترونیک و پردازش ابری"
+          },
+          "city": {
+            "type": "string",
+            "example": "تهران"
+          },
+          "address": {
+            "type": "string",
+            "example": "آدرس جدید شرکت"
+          },
+          "phone": {
+            "type": "string",
+            "example": "02161930000"
+          },
+          "supervisorName": {
+            "type": "string",
+            "example": "سرپرست جدید"
+          },
+          "supervisorPhone": {
+            "type": "string",
+            "example": "09120000000"
+          }
+        }
+      },
+      "CreateInternshipRequestDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "number",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "کارآموزی توسعه بک‌اند با NestJS و میکروسرویس‌ها"
+          },
+          "description": {
+            "type": "string",
+            "example": "درخواست رسمی گذراندن دوره کارآموزی تابستانه جهت فراگیری توسعه نرم‌افزارهای مقیاس‌پذیر"
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-07-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-30T00:00:00.000Z"
+          },
+          "totalHours": {
+            "type": "number",
+            "example": 240,
+            "default": 240
+          },
+          "academicTerm": {
+            "type": "string",
+            "example": "تابستان ۱۴۰۳",
+            "description": "Academic term; defaults to the configured active term from settings"
+          }
+        },
+        "required": [
+          "companyId",
+          "title",
+          "description",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateRequestStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ],
+            "example": "APPROVED"
+          },
+          "professorId": {
+            "type": "number",
+            "description": "Assigned supervising professor ID (required when status is APPROVED)",
+            "example": 1
+          },
+          "rejectionReason": {
+            "type": "string",
+            "description": "Optional rejection reason when status is REJECTED",
+            "example": "ظرفیت پذیرش شرکت تکمیل شده است"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateInternshipDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "number",
+            "example": 1
+          },
+          "professorId": {
+            "type": "number",
+            "example": 1
+          },
+          "companyId": {
+            "type": "number",
+            "example": 1
+          },
+          "requestId": {
+            "type": "number",
+            "example": 2
+          },
+          "academicTerm": {
+            "type": "string",
+            "example": "تابستان ۱۴۰۳"
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-07-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-30T00:00:00.000Z"
+          },
+          "progressPercentage": {
+            "type": "number",
+            "example": 0,
+            "default": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "COMPLETED",
+              "REJECTED",
+              "CANCELLED"
+            ],
+            "default": "ACTIVE"
+          }
+        },
+        "required": [
+          "studentId",
+          "professorId",
+          "companyId",
+          "requestId",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateInternshipDto": {
+        "type": "object",
+        "properties": {
+          "professorId": {
+            "type": "number",
+            "example": 1
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-07-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-09-30T00:00:00.000Z"
+          },
+          "progressPercentage": {
+            "type": "number",
+            "example": 65
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "COMPLETED",
+              "REJECTED",
+              "CANCELLED"
+            ]
+          }
+        }
+      },
+      "CreateWeeklyReportDto": {
+        "type": "object",
+        "properties": {
+          "internshipId": {
+            "type": "number",
+            "example": 1
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 1,
+            "minimum": 1
+          },
+          "startDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-07-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-07-07T00:00:00.000Z"
+          },
+          "activities": {
+            "type": "string",
+            "example": "پیاده‌سازی احراز هویت با JWT و اتصال به دیتابیس پستگرس"
+          },
+          "skillsLearned": {
+            "type": "string",
+            "example": "NestJS, Prisma ORM, JWT, Docker"
+          },
+          "challenges": {
+            "type": "string",
+            "example": "مدیریت مهاجرت‌های دیتابیس در محیط کانتینر"
+          },
+          "description": {
+            "type": "string",
+            "example": "شرح جامع فعالیت‌های انجام شده در هفته اول"
+          }
+        },
+        "required": [
+          "internshipId",
+          "weekNumber",
+          "startDate",
+          "endDate",
+          "activities",
+          "skillsLearned",
+          "description"
+        ]
+      },
+      "ReviewWeeklyReportDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "NEEDS_REVISION"
+            ],
+            "example": "APPROVED"
+          },
+          "professorComment": {
+            "type": "string",
+            "example": "گزارش این هفته بررسی شد و تسلط دانشجو بر مباحث بسیار خوب ارزیابی می‌شود."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "internshipId": {
+            "type": "number",
+            "example": 1
+          },
+          "technicalSkill": {
+            "type": "number",
+            "example": 19.5,
+            "minimum": 0,
+            "maximum": 20
+          },
+          "responsibility": {
+            "type": "number",
+            "example": 19,
+            "minimum": 0,
+            "maximum": 20
+          },
+          "discipline": {
+            "type": "number",
+            "example": 20,
+            "minimum": 0,
+            "maximum": 20
+          },
+          "teamwork": {
+            "type": "number",
+            "example": 18.5,
+            "minimum": 0,
+            "maximum": 20
+          },
+          "attendance": {
+            "type": "number",
+            "example": 20,
+            "minimum": 0,
+            "maximum": 20
+          },
+          "description": {
+            "type": "string",
+            "example": "دانشجو در طول دوره کارآموزی تعهد کاری بسیار بالا، انضباط حرفه‌ای و تسلط بر تکنولوژی‌های نوین از خود نشان داد."
+          }
+        },
+        "required": [
+          "internshipId",
+          "technicalSkill",
+          "responsibility",
+          "discipline",
+          "teamwork",
+          "attendance",
+          "description"
+        ]
+      }
+    }
+  }
+}

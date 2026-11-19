@@ -1,10 +1,17 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { validateEnv } from './common/config/env.validation';
+import { MailModule } from './common/mail/mail.module';
+import { StorageModule } from './common/storage/storage.module';
+import { AuditLogsModule } from './common/audit/audit-logs.module';
+import { ObservabilityModule } from './common/observability/observability.module';
+import { RequestContextMiddleware } from './common/observability/request-context.middleware';
 
 // Feature Modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -28,8 +35,23 @@ import { SettingsModule } from './modules/settings/settings.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: validateEnv,
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          ttl: configService.get<number>('THROTTLE_TTL_MS', 60000),
+          limit: configService.get<number>('THROTTLE_LIMIT', 120),
+        },
+      ],
     }),
     PrismaModule,
+    MailModule,
+    StorageModule,
+    AuditLogsModule,
+    ObservabilityModule,
     HealthModule,
     DashboardModule,
     SettingsModule,
@@ -48,6 +70,10 @@ import { SettingsModule } from './modules/settings/settings.module';
   ],
   providers: [
     {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
@@ -61,4 +87,8 @@ import { SettingsModule } from './modules/settings/settings.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}

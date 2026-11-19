@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateInternshipRequestDto {
   @ApiProperty({ example: 1 })
@@ -12,11 +12,13 @@ export class CreateInternshipRequestDto {
   @ApiProperty({ example: 'کارآموزی توسعه بک‌اند با NestJS و میکروسرویس‌ها' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
   @ApiProperty({ example: 'درخواست رسمی گذراندن دوره کارآموزی تابستانه جهت فراگیری توسعه نرم‌افزارهای مقیاس‌پذیر' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(2000)
   description: string;
 
   @ApiProperty({ example: '2026-07-01T00:00:00.000Z' })
@@ -37,4 +39,13 @@ export class CreateInternshipRequestDto {
   @IsInt()
   @Min(100)
   totalHours?: number = 240;
+
+  @ApiPropertyOptional({
+    example: 'تابستان ۱۴۰۳',
+    description: 'Academic term; defaults to the configured active term from settings',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  academicTerm?: string;
 }

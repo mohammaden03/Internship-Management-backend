@@ -37,6 +37,9 @@ export class InMemoryPrismaService {
     notification: 0,
     activityLog: 0,
     systemSetting: 0,
+    refreshToken: 0,
+    passwordResetToken: 0,
+    auditLog: 0,
   };
 
   private db: Record<string, AnyRecord[]> = {
@@ -52,6 +55,9 @@ export class InMemoryPrismaService {
     notification: [],
     activityLog: [],
     systemSetting: [],
+    refreshToken: [],
+    passwordResetToken: [],
+    auditLog: [],
   };
 
   private nextId(table: string): number {
@@ -70,6 +76,10 @@ export class InMemoryPrismaService {
   async $connect() {}
   async $disconnect() {}
 
+  async $queryRaw() {
+    return [{ '?column?': 1 }];
+  }
+
   async $transaction<T>(fn: (tx: this) => Promise<T>): Promise<T> {
     const snapshotDb = clone(this.db);
     const snapshotSeq = { ...this.seq };
@@ -80,6 +90,10 @@ export class InMemoryPrismaService {
       this.seq = snapshotSeq;
       throw err;
     }
+  }
+
+  getRawTable(table: string): AnyRecord[] {
+    return this.db[table] || [];
   }
 
   async seed() {
@@ -240,6 +254,7 @@ export class InMemoryPrismaService {
         professorId: prof1.id,
         title: 'توسعه بک‌اند و سرویس‌های میکروسرویس',
         description: 'درخواست کارآموزی تابستانه',
+        academicTerm: 'تابستان ۱۴۰۳',
         startDate: new Date('2024-06-21T00:00:00.000Z'),
         endDate: new Date('2024-09-21T00:00:00.000Z'),
         totalHours: 240,
@@ -254,6 +269,7 @@ export class InMemoryPrismaService {
         professorId: prof2.id,
         title: 'امنیت سایبری و زیرساخت شبکه',
         description: 'درخواست مصوب کارآموزی',
+        academicTerm: 'تابستان ۱۴۰۳',
         startDate: new Date('2024-07-05T00:00:00.000Z'),
         endDate: new Date('2024-10-05T00:00:00.000Z'),
         totalHours: 240,
@@ -267,6 +283,7 @@ export class InMemoryPrismaService {
         professorId: prof1.id,
         companyId: comp1.id,
         requestId: req1.id,
+        academicTerm: 'تابستان ۱۴۰۳',
         startDate: new Date('2024-06-21T00:00:00.000Z'),
         endDate: new Date('2024-09-21T00:00:00.000Z'),
         progressPercentage: 20,
@@ -280,6 +297,7 @@ export class InMemoryPrismaService {
         professorId: prof2.id,
         companyId: comp2.id,
         requestId: req2.id,
+        academicTerm: 'تابستان ۱۴۰۳',
         startDate: new Date('2024-07-05T00:00:00.000Z'),
         endDate: new Date('2024-10-05T00:00:00.000Z'),
         progressPercentage: 50,
@@ -337,12 +355,19 @@ export class InMemoryPrismaService {
       data: {
         internshipId: intern1.id,
         fileName: 'intro_letter.pdf',
-        filePath: '/uploads/documents/intro_letter.pdf',
+        originalName: 'intro_letter.pdf',
+        filePath: '1/missing-intro-letter.pdf',
+        storageKey: '1/missing-intro-letter.pdf',
+        mimeType: 'application/pdf',
+        size: 1024,
+        sha256: null,
         documentType: DocumentType.INTRODUCTION_LETTER,
       },
     });
 
-    await this.systemSetting.create({ data: { key: 'academicTerm', value: '۱۴۰۳-۱۴۰۴ نیمسال اول' } });
+    await this.systemSetting.create({ data: { key: 'universityName', value: 'دانشگاه سمنان' } });
+    await this.systemSetting.create({ data: { key: 'academicTerm', value: 'تابستان ۱۴۰۳' } });
+    await this.systemSetting.create({ data: { key: 'letterDeadline', value: '2026-07-15' } });
     await this.systemSetting.create({ data: { key: 'minHours', value: '240' } });
     await this.systemSetting.create({ data: { key: 'maxWeeklyHours', value: '40' } });
     await this.systemSetting.create({ data: { key: 'autoIssueLetter', value: 'true' } });
@@ -358,6 +383,11 @@ export class InMemoryPrismaService {
       if (relName === 'professor') return this.db.professor.find((p) => p.userId === row.id) ?? null;
       if (relName === 'notifications') return this.db.notification.filter((n) => n.userId === row.id);
       if (relName === 'activityLogs') return this.db.activityLog.filter((a) => a.userId === row.id);
+      if (relName === 'refreshTokens') return this.db.refreshToken.filter((t) => t.userId === row.id);
+      if (relName === 'passwordResetTokens') {
+        return this.db.passwordResetToken.filter((t) => t.userId === row.id);
+      }
+      if (relName === 'auditLogs') return this.db.auditLog.filter((a) => a.actorId === row.id);
     }
     if (table === 'student') {
       if (relName === 'user') return this.db.user.find((u) => u.id === row.userId) ?? null;
@@ -376,7 +406,9 @@ export class InMemoryPrismaService {
     if (table === 'internshipRequest') {
       if (relName === 'student') return this.db.student.find((s) => s.id === row.studentId) ?? null;
       if (relName === 'company') return this.db.company.find((c) => c.id === row.companyId) ?? null;
-      if (relName === 'professor') return row.professorId ? (this.db.professor.find((p) => p.id === row.professorId) ?? null) : null;
+      if (relName === 'professor') {
+        return row.professorId ? (this.db.professor.find((p) => p.id === row.professorId) ?? null) : null;
+      }
       if (relName === 'internship') return this.db.internship.find((i) => i.requestId === row.id) ?? null;
     }
     if (table === 'internship') {
@@ -391,8 +423,18 @@ export class InMemoryPrismaService {
     if (table === 'weeklyReport' || table === 'document' || table === 'evaluation') {
       if (relName === 'internship') return this.db.internship.find((i) => i.id === row.internshipId) ?? null;
     }
-    if (table === 'notification' || table === 'activityLog') {
+    if (
+      table === 'notification' ||
+      table === 'activityLog' ||
+      table === 'refreshToken' ||
+      table === 'passwordResetToken'
+    ) {
       if (relName === 'user') return this.db.user.find((u) => u.id === row.userId) ?? null;
+    }
+    if (table === 'auditLog') {
+      if (relName === 'actor') {
+        return row.actorId ? (this.db.user.find((u) => u.id === row.actorId) ?? null) : null;
+      }
     }
     return undefined;
   }
@@ -400,6 +442,7 @@ export class InMemoryPrismaService {
   private relationTargetTable(table: string, relName: string): string {
     const map: Record<string, string> = {
       user: 'user',
+      actor: 'user',
       student: 'student',
       professor: 'professor',
       company: 'company',
@@ -412,8 +455,60 @@ export class InMemoryPrismaService {
       evaluation: 'evaluation',
       notifications: 'notification',
       activityLogs: 'activityLog',
+      refreshTokens: 'refreshToken',
+      passwordResetTokens: 'passwordResetToken',
+      auditLogs: 'auditLog',
     };
     return map[relName] || table;
+  }
+
+  private matchesConditionValue(val: any, condition: any): boolean {
+    if (condition !== null && typeof condition === 'object' && !(condition instanceof Date)) {
+      if ('contains' in condition) {
+        const needle = String(condition.contains);
+        const hay = val == null ? '' : String(val);
+        const match =
+          condition.mode === 'insensitive'
+            ? hay.toLowerCase().includes(needle.toLowerCase())
+            : hay.includes(needle);
+        if (!match) return false;
+      }
+      if ('equals' in condition && val !== condition.equals) {
+        return false;
+      }
+      if ('not' in condition && val === condition.not) {
+        return false;
+      }
+      if ('in' in condition && Array.isArray(condition.in) && !condition.in.includes(val)) {
+        return false;
+      }
+      if ('gt' in condition) {
+        if (val == null) return false;
+        const lv = val instanceof Date ? val.getTime() : val;
+        const rv = condition.gt instanceof Date ? condition.gt.getTime() : condition.gt;
+        if (!(lv > rv)) return false;
+      }
+      if ('gte' in condition) {
+        if (val == null) return false;
+        const lv = val instanceof Date ? val.getTime() : val;
+        const rv = condition.gte instanceof Date ? condition.gte.getTime() : condition.gte;
+        if (!(lv >= rv)) return false;
+      }
+      if ('lt' in condition) {
+        if (val == null) return false;
+        const lv = val instanceof Date ? val.getTime() : val;
+        const rv = condition.lt instanceof Date ? condition.lt.getTime() : condition.lt;
+        if (!(lv < rv)) return false;
+      }
+      if ('lte' in condition) {
+        if (val == null) return false;
+        const lv = val instanceof Date ? val.getTime() : val;
+        const rv = condition.lte instanceof Date ? condition.lte.getTime() : condition.lte;
+        if (!(lv <= rv)) return false;
+      }
+      return true;
+    }
+    return val === condition;
   }
 
   private matchesWhere(table: string, row: AnyRecord, where?: AnyRecord): boolean {
@@ -436,22 +531,7 @@ export class InMemoryPrismaService {
       }
 
       if (key in row) {
-        const val = row[key];
-        if (condition !== null && typeof condition === 'object' && !(condition instanceof Date)) {
-          if ('contains' in condition) {
-            const needle = String(condition.contains);
-            const hay = val == null ? '' : String(val);
-            const match =
-              condition.mode === 'insensitive'
-                ? hay.toLowerCase().includes(needle.toLowerCase())
-                : hay.includes(needle);
-            if (!match) return false;
-          } else if ('equals' in condition) {
-            if (val !== condition.equals) return false;
-          } else {
-            if (val !== condition) return false;
-          }
-        } else if (val !== condition) {
+        if (!this.matchesConditionValue(row[key], condition)) {
           return false;
         }
       } else {
@@ -480,7 +560,13 @@ export class InMemoryPrismaService {
           const rel = this.getRelation(table, row, k);
           const target = this.relationTargetTable(table, k);
           if (Array.isArray(rel)) {
-            out[k] = rel.map((item) => this.applyProjection(target, item, v === true ? undefined : (v as AnyRecord)));
+            let list = rel;
+            if (typeof v === 'object' && (v as AnyRecord).where) {
+              list = list.filter((item) => this.matchesWhere(target, item, (v as AnyRecord).where));
+            }
+            out[k] = list.map((item) =>
+              this.applyProjection(target, item, v === true ? undefined : (v as AnyRecord)),
+            );
           } else {
             out[k] = this.applyProjection(target, rel, v === true ? undefined : (v as AnyRecord));
           }
@@ -500,10 +586,15 @@ export class InMemoryPrismaService {
         const target = this.relationTargetTable(table, k);
         if (Array.isArray(rel)) {
           let list = rel;
+          if (typeof v === 'object' && (v as AnyRecord).where) {
+            list = list.filter((item) => this.matchesWhere(target, item, (v as AnyRecord).where));
+          }
           if (typeof v === 'object' && (v as AnyRecord).orderBy) {
             list = this.applySort(list, (v as AnyRecord).orderBy);
           }
-          base[k] = list.map((item) => this.applyProjection(target, item, v === true ? undefined : (v as AnyRecord)));
+          base[k] = list.map((item) =>
+            this.applyProjection(target, item, v === true ? undefined : (v as AnyRecord)),
+          );
         } else {
           base[k] = this.applyProjection(target, rel, v === true ? undefined : (v as AnyRecord));
         }
@@ -555,7 +646,9 @@ export class InMemoryPrismaService {
         return this.applyProjection(table, found, args);
       },
       findFirst: async (args: AnyRecord = {}) => {
-        const found = this.db[table].find((r) => this.matchesWhere(table, r, args.where)) ?? null;
+        let rows = this.db[table].filter((r) => this.matchesWhere(table, r, args.where));
+        if (args.orderBy) rows = this.applySort(rows, args.orderBy);
+        const found = rows[0] ?? null;
         return this.applyProjection(table, found, args);
       },
       count: async (args: AnyRecord = {}) => {
@@ -567,12 +660,52 @@ export class InMemoryPrismaService {
           id: this.nextId(table),
           createdAt: now,
           updatedAt: now,
-          ...(table === 'document' ? { uploadedAt: now } : {}),
-          ...(table === 'user' ? { isActive: true, refreshToken: null } : {}),
-          ...(table === 'internshipRequest' ? { professorId: null, rejectionReason: null, totalHours: 240, status: RequestStatus.PENDING } : {}),
-          ...(table === 'internship' ? { progressPercentage: 0, status: InternshipStatus.ACTIVE } : {}),
-          ...(table === 'weeklyReport' ? { challenges: null, professorComment: null, status: ReportStatus.DRAFT } : {}),
+          ...(table === 'document'
+            ? {
+                uploadedAt: now,
+                originalName: args.data?.fileName ?? null,
+                storageKey: args.data?.filePath ?? null,
+                mimeType: 'application/pdf',
+                size: 0,
+                sha256: null,
+                deletedAt: null,
+              }
+            : {}),
+          ...(table === 'user' ? { isActive: true, refreshToken: null, deletedAt: null } : {}),
+          ...(table === 'internshipRequest'
+            ? {
+                professorId: null,
+                rejectionReason: null,
+                totalHours: 240,
+                academicTerm: 'تابستان ۱۴۰۳',
+                status: RequestStatus.PENDING,
+                deletedAt: null,
+              }
+            : {}),
+          ...(table === 'internship'
+            ? {
+                progressPercentage: 0,
+                academicTerm: 'تابستان ۱۴۰۳',
+                status: InternshipStatus.ACTIVE,
+                deletedAt: null,
+              }
+            : {}),
+          ...(table === 'weeklyReport'
+            ? { challenges: null, professorComment: null, status: ReportStatus.DRAFT }
+            : {}),
           ...(table === 'notification' ? { isRead: false } : {}),
+          ...(table === 'refreshToken' ? { revokedAt: null } : {}),
+          ...(table === 'passwordResetToken' ? { usedAt: null } : {}),
+          ...(table === 'auditLog'
+            ? {
+                actorId: null,
+                entityType: null,
+                entityId: null,
+                ip: null,
+                requestId: null,
+                metadata: null,
+              }
+            : {}),
           ...clone(args.data),
         };
         this.db[table].push(record);
@@ -642,4 +775,7 @@ export class InMemoryPrismaService {
   notification = this.createDelegate('notification');
   activityLog = this.createDelegate('activityLog');
   systemSetting = this.createDelegate('systemSetting');
+  refreshToken = this.createDelegate('refreshToken');
+  passwordResetToken = this.createDelegate('passwordResetToken');
+  auditLog = this.createDelegate('auditLog');
 }

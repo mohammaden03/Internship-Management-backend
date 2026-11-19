@@ -15,6 +15,7 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -36,8 +37,8 @@ export class CompaniesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all companies with search (e.g. GET /companies?search=software), sorting and pagination' })
-  @ApiResponse({ status: 200, description: 'Paginated list of companies' })
+  @ApiOperation({ summary: 'Get all companies with search, sorting and pagination' })
+  @ApiPaginatedResponse(undefined, { paginated: true })
   findAll(@Query() query: PaginationQueryDto) {
     return this.companiesService.findAll(query);
   }

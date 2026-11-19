@@ -4,23 +4,33 @@ import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { SettingsService } from './settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @ApiTags('Settings')
-@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
+  @Public()
+  @Get('public')
+  @ApiOperation({ summary: 'Get public academic term, university name, and deadlines (no auth required)' })
+  @ApiResponse({ status: 200, description: 'Public system settings summary' })
+  getPublicSettings() {
+    return this.settingsService.getPublicSettings();
+  }
+
+  @ApiBearerAuth('JWT-auth')
   @Get()
-  @ApiOperation({ summary: 'Get system settings (any authenticated user)' })
+  @ApiOperation({ summary: 'Get full system settings (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Current system settings' })
   getSettings() {
     return this.settingsService.getSettings();
   }
 
+  @ApiBearerAuth('JWT-auth')
   @Patch()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin update system settings' })

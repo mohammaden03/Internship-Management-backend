@@ -7,9 +7,19 @@ import { InternshipStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateProfessorDto } from './dto/create-professor.dto';
 import { UpdateProfessorDto } from './dto/update-professor.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { UpdateMyProfessorProfileDto } from './dto/update-my-professor-profile.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+  validateEnumFilter,
+} from '../../common/utils/query.utils';
 
 const PROFESSOR_SORT_FIELDS = [
   'id',
@@ -33,8 +43,8 @@ export class ProfessorsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateProfessorDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { id: dto.userId },
+    const existingUser = await this.prisma.user.findFirst({
+      where: { id: dto.userId, deletedAt: null },
     });
     if (!existingUser) {
       throw new NotFoundException(`User with ID '${dto.userId}' not found`);
@@ -55,25 +65,30 @@ export class ProfessorsService {
     });
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
 
-    const where: any = {};
-    if (query.search) {
+    const where: any = { user: { deletedAt: null } };
+    if (searchTerm) {
       where.OR = [
-        { department: { contains: query.search, mode: 'insensitive' } },
-        { academicRank: { contains: query.search, mode: 'insensitive' } },
-        { user: { firstName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { lastName: { contains: query.search, mode: 'insensitive' } } },
-        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+        { department: { contains: searchTerm, mode: 'insensitive' } },
+        { academicRank: { contains: searchTerm, mode: 'insensitive' } },
+        { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { email: { contains: searchTerm, mode: 'insensitive' } } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, PROFESSOR_SORT_FIELDS, 'id', 'desc');
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      PROFESSOR_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.professor.findMany({
         where,
         skip,
@@ -89,24 +104,20 @@ export class ProfessorsService {
       this.prisma.professor.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findByUserId(userId: number) {
-    const professor = await this.prisma.professor.findUnique({
-      where: { userId },
+    const professor = await this.prisma.professor.findFirst({
+      where: { userId, user: { deletedAt: null } },
       include: {
         user: { select: SAFE_USER_SELECT },
         internships: {
+          where: { deletedAt: null },
           include: {
             student: {
               include: {
@@ -130,12 +141,37 @@ export class ProfessorsService {
     return professor;
   }
 
+  async updateMyProfile(userId: number, dto: UpdateMyProfessorProfileDto) {
+    const professor = await this.findByUserId(userId);
+
+    const userUpdates: Record<string, any> = {};
+    if (dto.firstName !== undefined) userUpdates.firstName = dto.firstName;
+    if (dto.lastName !== undefined) userUpdates.lastName = dto.lastName;
+    if (dto.phoneNumber !== undefined) userUpdates.phoneNumber = dto.phoneNumber;
+
+    const profUpdates: Record<string, any> = {};
+    if (dto.department !== undefined) profUpdates.department = dto.department;
+    if (dto.academicRank !== undefined) profUpdates.academicRank = dto.academicRank;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userUpdates).length > 0) {
+        await tx.user.update({ where: { id: userId }, data: userUpdates });
+      }
+      if (Object.keys(profUpdates).length > 0) {
+        await tx.professor.update({ where: { id: professor.id }, data: profUpdates });
+      }
+    });
+
+    return this.findByUserId(userId);
+  }
+
   async findOne(id: number) {
-    const professor = await this.prisma.professor.findUnique({
-      where: { id },
+    const professor = await this.prisma.professor.findFirst({
+      where: { id, user: { deletedAt: null } },
       include: {
         user: { select: SAFE_USER_SELECT },
         internships: {
+          where: { deletedAt: null },
           include: {
             student: {
               include: {
@@ -159,20 +195,36 @@ export class ProfessorsService {
     return professor;
   }
 
-  async findAssignedStudents(professorId: number, query: PaginationQueryDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async findAssignedStudents(
+    professorId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
 
-    const where: any = { professorId };
+    const where: any = { professorId, deletedAt: null };
     const statusFilter = validateEnumFilter(query.status, InternshipStatus, 'status');
     if (statusFilter) {
       where.status = statusFilter;
     }
+    if (searchTerm) {
+      where.OR = [
+        { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { student: { studentNumber: { contains: searchTerm, mode: 'insensitive' } } },
+        { student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } } },
+        { student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } } },
+      ];
+    }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, INTERNSHIP_SORT_FIELDS, 'id', 'desc');
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      INTERNSHIP_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const [internships, totalItems] = await Promise.all([
+    const [internships, total] = await Promise.all([
       this.prisma.internship.findMany({
         where,
         skip,
@@ -199,16 +251,11 @@ export class ProfessorsService {
       this.prisma.internship.count({ where }),
     ]);
 
-    return {
-      items: internships,
-      meta: {
-        totalItems,
-        itemCount: internships.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(internships, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async update(id: number, dto: UpdateProfessorDto) {

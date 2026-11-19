@@ -10,6 +10,7 @@ import { map } from 'rxjs/operators';
 export interface Response<T> {
   success: boolean;
   statusCode: number;
+  message: string;
   data: T;
   timestamp: string;
 }
@@ -25,6 +26,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> 
       map((data) => ({
         success: true,
         statusCode,
+        message: 'OK',
         data,
         timestamp: new Date().toISOString(),
       })),

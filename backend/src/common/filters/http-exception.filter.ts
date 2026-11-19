@@ -7,16 +7,21 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { MetricsService } from '../observability/metrics.service';
+import { RequestWithContext } from '../observability/request-context.middleware';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  constructor(private readonly metricsService?: MetricsService) {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithContext>();
+    const requestId = request.requestId || 'unknown';
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: any = 'Internal server error occurred';
@@ -54,20 +59,38 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error = 'Bad Request';
       message = 'Invalid query or input payload';
     } else if (exception instanceof Error) {
-      message = exception.message;
+      message = process.env.NODE_ENV === 'production' ? 'Internal server error occurred' : exception.message;
       error = exception.name;
     }
 
-    this.logger.error(
-      `[${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(message)}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    this.metricsService?.record(status, 0);
+
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.error(
+        JSON.stringify({
+          level: 'error',
+          timestamp: new Date().toISOString(),
+          requestId,
+          method: request.method,
+          url: request.url,
+          statusCode: status,
+          error,
+          message,
+        }),
+      );
+    } else if (process.env.NODE_ENV !== 'test') {
+      this.logger.error(
+        `[${requestId}] [${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(message)}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    }
 
     response.status(status).json({
       success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
+      requestId,
       error,
       message,
     });

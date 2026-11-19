@@ -10,10 +10,20 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateWeeklyReportDto } from './dto/create-report.dto';
 import { ReviewWeeklyReportDto } from './dto/review-report.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildCollectionResponse,
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy, validateEnumFilter } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+  validateEnumFilter,
+} from '../../common/utils/query.utils';
 import { ReportStatus, Role, WeeklyReport } from '@prisma/client';
 
 const REPORT_SORT_FIELDS = [
@@ -39,8 +49,8 @@ export class WeeklyReportsService {
     userId: number,
     dto: CreateWeeklyReportDto,
   ): Promise<WeeklyReport> {
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: dto.internshipId },
+    const internship = await this.prisma.internship.findFirst({
+      where: { id: dto.internshipId, deletedAt: null },
       include: {
         professor: { include: { user: { select: SAFE_USER_SELECT } } },
         student: { include: { user: { select: SAFE_USER_SELECT } } },
@@ -101,29 +111,39 @@ export class WeeklyReportsService {
   async findAll(
     query: PaginationQueryDto,
     user: AuthenticatedUser,
-  ): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      REPORT_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = {};
+    const where: any = {
+      internship: { deletedAt: null },
+    };
 
     if (user.role === Role.PROFESSOR) {
       if (!user.professorId) {
-        return {
-          items: [],
-          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
-        };
+        return buildPaginatedResponse([], 0, page, limit, {
+          searchTerm,
+          sortBy,
+          sortOrder,
+        });
       }
-      where.internship = { professorId: user.professorId };
+      where.internship.professorId = user.professorId;
     } else if (user.role === Role.STUDENT) {
       if (!user.studentId) {
-        return {
-          items: [],
-          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
-        };
+        return buildPaginatedResponse([], 0, page, limit, {
+          searchTerm,
+          sortBy,
+          sortOrder,
+        });
       }
-      where.internship = { studentId: user.studentId };
+      where.internship.studentId = user.studentId;
     }
 
     const statusFilter = validateEnumFilter(query.status, ReportStatus, 'status');
@@ -131,19 +151,25 @@ export class WeeklyReportsService {
       where.status = statusFilter;
     }
 
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { activities: { contains: query.search, mode: 'insensitive' } },
-        { skillsLearned: { contains: query.search, mode: 'insensitive' } },
-        { description: { contains: query.search, mode: 'insensitive' } },
-        { internship: { student: { user: { firstName: { contains: query.search, mode: 'insensitive' } } } } },
-        { internship: { student: { user: { lastName: { contains: query.search, mode: 'insensitive' } } } } },
+        { activities: { contains: searchTerm, mode: 'insensitive' } },
+        { skillsLearned: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        {
+          internship: {
+            student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } },
+          },
+        },
+        {
+          internship: {
+            student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } },
+          },
+        },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, REPORT_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.weeklyReport.findMany({
         where,
         skip,
@@ -162,24 +188,19 @@ export class WeeklyReportsService {
       this.prisma.weeklyReport.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findByInternship(
     internshipId: number,
     user: AuthenticatedUser,
-  ): Promise<WeeklyReport[]> {
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: internshipId },
+  ): Promise<PaginatedResponseDto<WeeklyReport>> {
+    const internship = await this.prisma.internship.findFirst({
+      where: { id: internshipId, deletedAt: null },
     });
     if (!internship) {
       throw new NotFoundException(`Internship with ID '${internshipId}' not found`);
@@ -189,13 +210,17 @@ export class WeeklyReportsService {
       throw new ForbiddenException('You can only view weekly reports for your own internship');
     }
     if (user.role === Role.PROFESSOR && internship.professorId !== user.professorId) {
-      throw new ForbiddenException('You can only view weekly reports for internships under your supervision');
+      throw new ForbiddenException(
+        'You can only view weekly reports for internships under your supervision',
+      );
     }
 
-    return this.prisma.weeklyReport.findMany({
+    const items = await this.prisma.weeklyReport.findMany({
       where: { internshipId },
       orderBy: { weekNumber: 'asc' },
     });
+
+    return buildCollectionResponse(items);
   }
 
   async findOne(id: number, user?: AuthenticatedUser): Promise<any> {
@@ -212,7 +237,7 @@ export class WeeklyReportsService {
       },
     });
 
-    if (!report) {
+    if (!report || report.internship?.deletedAt) {
       throw new NotFoundException(`Weekly report with ID '${id}' not found`);
     }
 
@@ -220,7 +245,9 @@ export class WeeklyReportsService {
       throw new ForbiddenException('You can only view your own weekly reports');
     }
     if (user?.role === Role.PROFESSOR && report.internship.professorId !== user.professorId) {
-      throw new ForbiddenException('You can only view weekly reports of students under your supervision');
+      throw new ForbiddenException(
+        'You can only view weekly reports of students under your supervision',
+      );
     }
 
     return report;

@@ -44,25 +44,61 @@ enum DocumentType {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  firstName     String
-  lastName      String
-  email         String         @unique
-  nationalCode  String         @unique
-  password      String
-  phoneNumber   String?
-  role          Role           @default(STUDENT)
-  isActive      Boolean        @default(true)
-  refreshToken  String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  firstName           String
+  lastName            String
+  email               String               @unique
+  nationalCode        String               @unique
+  password            String
+  phoneNumber         String?
+  role                Role                 @default(STUDENT)
+  isActive            Boolean              @default(true)
+  refreshToken        String?
+  deletedAt           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  student       Student?
-  professor     Professor?
-  notifications Notification[]
-  activityLogs  ActivityLog[]
+  student             Student?
+  professor           Professor?
+  notifications       Notification[]
+  activityLogs        ActivityLog[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
 
+  @@index([deletedAt])
   @@map("users")
+}
+
+model RefreshToken {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId       String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  replacedByHash String?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Student {
@@ -123,6 +159,7 @@ model InternshipRequest {
   company         Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   professorId     Int?
   professor       Professor?    @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  academicTerm    String        @default("تابستان ۱۴۰۳")
   title           String
   description     String
   startDate       DateTime
@@ -130,11 +167,14 @@ model InternshipRequest {
   totalHours      Int           @default(240)
   status          RequestStatus @default(PENDING)
   rejectionReason String?
+  deletedAt       DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   internship      Internship?
 
+  @@index([deletedAt])
+  @@index([studentId, companyId, academicTerm])
   @@map("internship_requests")
 }
 
@@ -148,10 +188,12 @@ model Internship {
   company            Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
   requestId          Int               @unique
   request            InternshipRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  academicTerm       String            @default("تابستان ۱۴۰۳")
   startDate          DateTime
   endDate            DateTime
   progressPercentage Int               @default(0)
   status             InternshipStatus  @default(ACTIVE)
+  deletedAt          DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -159,6 +201,8 @@ model Internship {
   documents          Document[]
   evaluation         Evaluation?
 
+  @@index([deletedAt])
+  @@index([studentId, academicTerm, status])
   @@map("internships")
 }
 
@@ -187,10 +231,18 @@ model Document {
   internshipId Int
   internship   Internship   @relation(fields: [internshipId], references: [id], onDelete: Cascade)
   fileName     String
+  originalName String       @default("")
   filePath     String
+  storageKey   String?
+  mimeType     String       @default("application/pdf")
+  size         Int          @default(0)
+  sha256       String?
   documentType DocumentType
+  deletedAt    DateTime?
   uploadedAt   DateTime     @default(now())
 
+  @@index([deletedAt])
+  @@index([internshipId, sha256])
   @@map("documents")
 }
 
@@ -230,6 +282,25 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@map("activity_logs")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  event      String
+  entityType String?
+  entityId   String?
+  ip         String?
+  requestId  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([event])
+  @@index([createdAt])
+  @@index([requestId])
+  @@map("audit_logs")
 }
 
 model SystemSetting {

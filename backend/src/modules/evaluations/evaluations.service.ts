@@ -8,13 +8,37 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
-import { PaginationQueryDto, PaginatedResult } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import {
+  buildPaginatedResponse,
+  PaginatedResponseDto,
+} from '../../common/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { SAFE_USER_SELECT } from '../../common/constants/user-select';
-import { resolveOrderBy } from '../../common/utils/query.utils';
+import {
+  normalizePagination,
+  normalizeSearchTerm,
+  resolveSort,
+} from '../../common/utils/query.utils';
 import { Evaluation, InternshipStatus, Role } from '@prisma/client';
 
 const EVALUATION_SORT_FIELDS = ['id', 'finalScore', 'createdAt'] as const;
+
+export function calculateWeightedEvaluationScore(dto: {
+  technicalSkill: number;
+  responsibility: number;
+  discipline: number;
+  teamwork: number;
+  attendance: number;
+}): number {
+  const weightedHundredths =
+    dto.technicalSkill * 30 +
+    dto.responsibility * 20 +
+    dto.discipline * 15 +
+    dto.teamwork * 15 +
+    dto.attendance * 20;
+  return Math.round(weightedHundredths) / 100;
+}
 
 @Injectable()
 export class EvaluationsService {
@@ -29,8 +53,8 @@ export class EvaluationsService {
     professorId: number,
     userId: number,
   ): Promise<Evaluation> {
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: dto.internshipId },
+    const internship = await this.prisma.internship.findFirst({
+      where: { id: dto.internshipId, deletedAt: null },
       include: {
         student: { include: { user: { select: SAFE_USER_SELECT } } },
         professor: { include: { user: { select: SAFE_USER_SELECT } } },
@@ -43,7 +67,9 @@ export class EvaluationsService {
     }
 
     if (internship.professorId !== professorId) {
-      throw new ForbiddenException('You can only evaluate students assigned under your supervision');
+      throw new ForbiddenException(
+        'You can only evaluate students assigned under your supervision',
+      );
     }
 
     const existingEval = await this.prisma.evaluation.findUnique({
@@ -53,16 +79,7 @@ export class EvaluationsService {
       throw new ConflictException('An evaluation for this internship has already been submitted');
     }
 
-    // Weighted average out of 20
-    const finalScore = parseFloat(
-      (
-        dto.technicalSkill * 0.3 +
-        dto.responsibility * 0.2 +
-        dto.discipline * 0.15 +
-        dto.teamwork * 0.15 +
-        dto.attendance * 0.2
-      ).toFixed(2),
-    );
+    const finalScore = calculateWeightedEvaluationScore(dto);
 
     const evaluation = await this.prisma.$transaction(async (tx) => {
       const createdEval = await tx.evaluation.create({
@@ -106,42 +123,58 @@ export class EvaluationsService {
   async findAll(
     query: PaginationQueryDto,
     user: AuthenticatedUser,
-  ): Promise<PaginatedResult<any>> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page, limit, skip } = normalizePagination(query.page, query.limit);
+    const searchTerm = normalizeSearchTerm(query.search);
+    const { orderBy, sortBy, sortOrder } = resolveSort(
+      query.sortBy,
+      query.sortOrder,
+      EVALUATION_SORT_FIELDS,
+      'id',
+      'desc',
+    );
 
-    const where: any = {};
+    const where: any = {
+      internship: { deletedAt: null },
+    };
     if (user.role === Role.PROFESSOR) {
       if (!user.professorId) {
-        return {
-          items: [],
-          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
-        };
+        return buildPaginatedResponse([], 0, page, limit, {
+          searchTerm,
+          sortBy,
+          sortOrder,
+        });
       }
-      where.internship = { professorId: user.professorId };
+      where.internship.professorId = user.professorId;
     } else if (user.role === Role.STUDENT) {
       if (!user.studentId) {
-        return {
-          items: [],
-          meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
-        };
+        return buildPaginatedResponse([], 0, page, limit, {
+          searchTerm,
+          sortBy,
+          sortOrder,
+        });
       }
-      where.internship = { studentId: user.studentId };
+      where.internship.studentId = user.studentId;
     }
 
-    if (query.search) {
+    if (searchTerm) {
       where.OR = [
-        { description: { contains: query.search, mode: 'insensitive' } },
-        { internship: { student: { user: { firstName: { contains: query.search, mode: 'insensitive' } } } } },
-        { internship: { student: { user: { lastName: { contains: query.search, mode: 'insensitive' } } } } },
-        { internship: { company: { name: { contains: query.search, mode: 'insensitive' } } } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        {
+          internship: {
+            student: { user: { firstName: { contains: searchTerm, mode: 'insensitive' } } },
+          },
+        },
+        {
+          internship: {
+            student: { user: { lastName: { contains: searchTerm, mode: 'insensitive' } } },
+          },
+        },
+        { internship: { company: { name: { contains: searchTerm, mode: 'insensitive' } } } },
       ];
     }
 
-    const orderBy = resolveOrderBy(query.sortBy, query.sortOrder, EVALUATION_SORT_FIELDS, 'id', 'desc');
-
-    const [items, totalItems] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.evaluation.findMany({
         where,
         skip,
@@ -160,16 +193,11 @@ export class EvaluationsService {
       this.prisma.evaluation.count({ where }),
     ]);
 
-    return {
-      items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages: Math.ceil(totalItems / limit),
-        currentPage: page,
-      },
-    };
+    return buildPaginatedResponse(items, total, page, limit, {
+      searchTerm,
+      sortBy,
+      sortOrder,
+    });
   }
 
   async findOne(id: number, user: AuthenticatedUser): Promise<any> {
@@ -186,7 +214,7 @@ export class EvaluationsService {
       },
     });
 
-    if (!evaluation) {
+    if (!evaluation || evaluation.internship?.deletedAt) {
       throw new NotFoundException(`Evaluation with ID '${id}' not found`);
     }
 
@@ -194,7 +222,9 @@ export class EvaluationsService {
       throw new ForbiddenException('You can only view your own evaluation');
     }
     if (user.role === Role.PROFESSOR && evaluation.internship.professorId !== user.professorId) {
-      throw new ForbiddenException('You can only view evaluations of students under your supervision');
+      throw new ForbiddenException(
+        'You can only view evaluations of students under your supervision',
+      );
     }
 
     return evaluation;
@@ -204,8 +234,8 @@ export class EvaluationsService {
     internshipId: number,
     user: AuthenticatedUser,
   ): Promise<Evaluation | null> {
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: internshipId },
+    const internship = await this.prisma.internship.findFirst({
+      where: { id: internshipId, deletedAt: null },
     });
 
     if (!internship) {
@@ -216,7 +246,9 @@ export class EvaluationsService {
       throw new ForbiddenException('You can only view your own internship evaluation');
     }
     if (user.role === Role.PROFESSOR && internship.professorId !== user.professorId) {
-      throw new ForbiddenException('You can only view evaluations of internships under your supervision');
+      throw new ForbiddenException(
+        'You can only view evaluations of internships under your supervision',
+      );
     }
 
     return this.prisma.evaluation.findUnique({
