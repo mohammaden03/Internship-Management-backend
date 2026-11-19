@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InternshipStatus, RequestStatus } from '@prisma/client';
+import { InternshipStatus, ReportStatus, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 
@@ -19,6 +19,8 @@ export class DashboardService {
       activeInternships,
       pendingRequests,
       completedInternships,
+      totalReports,
+      pendingReports,
     ] = await Promise.all([
       this.settingsService.getSettings(),
       this.prisma.student.count({ where: { user: { deletedAt: null } } }),
@@ -33,6 +35,12 @@ export class DashboardService {
       this.prisma.internship.count({
         where: { status: InternshipStatus.COMPLETED, deletedAt: null },
       }),
+      this.prisma.weeklyReport.count({
+        where: { internship: { deletedAt: null } },
+      }),
+      this.prisma.weeklyReport.count({
+        where: { internship: { deletedAt: null }, status: ReportStatus.SUBMITTED },
+      }),
     ]);
 
     return {
@@ -44,6 +52,8 @@ export class DashboardService {
       activeInternships,
       pendingRequests,
       completedInternships,
+      totalReports,
+      pendingReports,
     };
   }
 }

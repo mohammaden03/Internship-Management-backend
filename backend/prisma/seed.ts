@@ -7,8 +7,28 @@ import {
   DocumentType,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { isAbsolute, join, resolve } from 'path';
 
 const prisma = new PrismaClient();
+
+/**
+ * Seeded document metadata must point at a real file, otherwise the authenticated
+ * download endpoint correctly answers 404 for demo data.
+ */
+function ensureSeedDocumentFile(fileName: string): number {
+  const configured = process.env.UPLOAD_DESTINATION || './uploads/documents';
+  const root = isAbsolute(configured) ? configured : resolve(process.cwd(), configured);
+  if (!existsSync(root)) {
+    mkdirSync(root, { recursive: true });
+  }
+  const content = Buffer.from(
+    `%PDF-1.4\n% University Internship seed document: ${fileName}\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n`,
+    'utf8',
+  );
+  writeFileSync(join(root, fileName), content);
+  return content.length;
+}
 
 function resolveSeedPassword(): string {
   const fromEnv = process.env.SEED_DEFAULT_PASSWORD?.trim();
@@ -570,19 +590,27 @@ async function main() {
   }
 
   // 8. Seed initial document metadata if none exist
+  const seedDocumentName = 'ahmadi_intro_letter.pdf';
+  const seedDocumentSize = ensureSeedDocumentFile(seedDocumentName);
   const docCount = await prisma.document.count();
   if (docCount === 0) {
     await prisma.document.create({
       data: {
         internshipId: intern1.id,
-        fileName: 'ahmadi_intro_letter.pdf',
-        originalName: 'ahmadi_intro_letter.pdf',
-        filePath: 'ahmadi_intro_letter.pdf',
-        storageKey: 'ahmadi_intro_letter.pdf',
+        fileName: seedDocumentName,
+        originalName: seedDocumentName,
+        filePath: seedDocumentName,
+        storageKey: seedDocumentName,
         mimeType: 'application/pdf',
-        size: 0,
+        size: seedDocumentSize,
         documentType: DocumentType.INTRODUCTION_LETTER,
       },
+    });
+  } else {
+    // Keep an already-seeded row consistent with the file written above
+    await prisma.document.updateMany({
+      where: { storageKey: seedDocumentName, size: 0 },
+      data: { size: seedDocumentSize },
     });
   }
 

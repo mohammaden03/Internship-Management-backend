@@ -3942,8 +3942,8 @@
     }
   },
   "info": {
-    "title": "University Internship Management System API",
-    "description": "سامانه جامع مدیریت کارآموزی دانشگاه",
+    "title": "University Internship Management Backend",
+    "description": "Production-ready NestJS Backend for University Internship Management",
     "version": "2.0.0",
     "contact": {}
   },
