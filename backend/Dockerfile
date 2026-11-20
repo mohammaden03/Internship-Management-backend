@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 RUN npx prisma generate
 
 COPY . .
@@ -25,7 +25,7 @@ RUN apk add --no-cache curl
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --no-audit --no-fund
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-seed ./dist-seed

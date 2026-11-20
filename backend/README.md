@@ -62,11 +62,18 @@ Verify health:
 - Swagger UI: `http://localhost:3010/api/docs`
 
 ### Running with Docker Compose
-From `backend/`:
+`docker-compose.yml` at the repository root starts the whole app: PostgreSQL, the API and the
+nginx-served React UI.
 ```bash
-docker compose up --build -d
+cp docker.env.example .env   # once, then set real secrets
+docker compose up -d --build
 ```
-Ensure `JWT_SECRET` and `JWT_REFRESH_SECRET` (>= 32 chars each, distinct) are set in `backend/.env` before running Docker Compose.
+`JWT_SECRET` and `JWT_REFRESH_SECRET` (>= 32 chars each, distinct) are required in that `.env`.
+
+- UI: http://localhost:3000
+- API: http://localhost:3010/api (Swagger at `/api/docs`)
+
+Stop with `docker compose down` (`-v` also deletes the database and uploads).
 
 ---
 

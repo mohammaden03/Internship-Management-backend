@@ -1,3 +1,11 @@
+# One entry point for the whole application: PostgreSQL + NestJS API + React UI.
+#
+#   cd Internship-Management-backend
+#   cp .env.docker.example .env      # once, then set real JWT secrets
+#   docker compose up -d --build
+#
+# UI:  http://localhost:3000        (nginx also proxies /api to the API container)
+# API: http://localhost:3010/api    (direct access, e.g. Swagger at /api/docs)
 services:
   postgres:
     image: postgres:16-alpine
@@ -8,11 +16,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-internship_pass_secure}
       POSTGRES_DB: ${POSTGRES_DB:-internship_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-internship_user} -d ${POSTGRES_DB:-internship_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-internship_user} -d ${POSTGRES_DB:-internship_db}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,7 +33,7 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: internship_backend
     restart: unless-stopped
@@ -30,20 +42,21 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      # The container always listens on 3010; only the host-side port is configurable below.
+      # The container always listens on 3010; only the host-side port is configurable.
       PORT: "3010"
       API_PREFIX: ${API_PREFIX:-api}
       LOG_LEVEL: ${LOG_LEVEL:-log}
       APP_NAME: ${APP_NAME:-University Internship Management System API}
       APP_DESCRIPTION: ${APP_DESCRIPTION:-سامانه جامع مدیریت کارآموزی دانشگاه}
       DATABASE_URL: postgresql://${POSTGRES_USER:-internship_user}:${POSTGRES_PASSWORD:-internship_pass_secure}@postgres:5432/${POSTGRES_DB:-internship_db}?schema=public
+      # Required: at least 32 characters each, and they must differ.
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (>=32 chars) in .env}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET (>=32 chars, distinct) in .env}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
-      # Docker-specific names: the local .env dev origins/URLs must not break the containers.
-      CORS_ORIGINS: ${DOCKER_CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost:5173}
-      FRONTEND_URL: ${DOCKER_FRONTEND_URL:-http://localhost:3000}
+      # Only the UI origin matters (the browser calls /api on the same origin).
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       UPLOAD_DESTINATION: ${UPLOAD_DESTINATION:-./uploads/documents}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
       ALLOWED_MIME_TYPES: ${ALLOWED_MIME_TYPES:-application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png}
@@ -52,8 +65,10 @@ services:
       SMTP_URL: ${SMTP_URL:-}
       SMTP_FROM: ${SMTP_FROM:-}
       PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
-      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-}
-      AUTO_SEED: ${AUTO_SEED:-false}
+      # Seeds the demo accounts on an empty database only. Change the password for
+      # anything beyond local use.
+      AUTO_SEED: ${AUTO_SEED:-true}
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-Password123@}
     ports:
       - "${BACKEND_PORT:-3010}:3010"
     volumes:
@@ -63,8 +78,11 @@ services:
 
   frontend:
     build:
-      context: ../../Internship-Management-frontend
+      context: ../Internship-Management-frontend
       dockerfile: Dockerfile
+      args:
+        # nginx serves the SPA and proxies /api to the backend container.
+        VITE_API_URL: /api
     container_name: internship_frontend
     restart: unless-stopped
     depends_on:
@@ -76,11 +94,13 @@ services:
       - internship_network
 
 volumes:
+  # Volume names are pinned so an existing database and uploaded documents survive
+  # moving this file or renaming the compose project.
   postgres_data:
-    driver: local
+    name: backend_postgres_data
   backend_uploads:
-    driver: local
+    name: backend_backend_uploads
 
 networks:
   internship_network:
-    driver: bridge
+    name: backend_internship_network
