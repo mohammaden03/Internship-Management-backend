@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsDate, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsDate,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CreateWeeklyReportDto {
   @ApiProperty({ example: 1 })
@@ -32,9 +40,11 @@ export class CreateWeeklyReportDto {
   @IsNotEmpty()
   activities: string;
 
-  @ApiProperty({ example: 'NestJS, Prisma ORM, JWT, Docker' })
+  // Required by the student report form too: at least 3 characters after trimming.
+  @ApiProperty({ example: 'NestJS, Prisma ORM, JWT, Docker', minLength: 3 })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  @IsNotEmpty()
+  @MinLength(3, { message: 'مهارت‌ها و آموخته‌های جدید باید حداقل ۳ کاراکتر باشد.' })
   skillsLearned: string;
 
   @ApiPropertyOptional({ example: 'مدیریت مهاجرت‌های دیتابیس در محیط کانتینر' })

@@ -4794,7 +4794,8 @@
           },
           "skillsLearned": {
             "type": "string",
-            "example": "NestJS, Prisma ORM, JWT, Docker"
+            "example": "NestJS, Prisma ORM, JWT, Docker",
+            "minLength": 3
           },
           "challenges": {
             "type": "string",
