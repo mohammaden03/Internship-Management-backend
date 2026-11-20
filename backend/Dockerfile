@@ -37,7 +37,9 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x ./docker-entrypoint.sh \
+# Normalize CRLF (Windows checkouts) so the shebang resolves inside the Linux image.
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh \
+  && chmod +x ./docker-entrypoint.sh \
   && mkdir -p /app/uploads/documents \
   && chown -R appuser:appgroup /app
 

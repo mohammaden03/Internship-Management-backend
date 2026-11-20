@@ -30,7 +30,8 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3010}
+      # The container always listens on 3010; only the host-side port is configurable below.
+      PORT: "3010"
       API_PREFIX: ${API_PREFIX:-api}
       LOG_LEVEL: ${LOG_LEVEL:-log}
       APP_NAME: ${APP_NAME:-University Internship Management System API}
@@ -40,8 +41,9 @@ services:
       JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET (>=32 chars, distinct) in .env}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost:5173}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # Docker-specific names: the local .env dev origins/URLs must not break the containers.
+      CORS_ORIGINS: ${DOCKER_CORS_ORIGINS:-http://localhost:3000,http://localhost:3010,http://localhost:5173}
+      FRONTEND_URL: ${DOCKER_FRONTEND_URL:-http://localhost:3000}
       UPLOAD_DESTINATION: ${UPLOAD_DESTINATION:-./uploads/documents}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
       ALLOWED_MIME_TYPES: ${ALLOWED_MIME_TYPES:-application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png}
@@ -53,9 +55,23 @@ services:
       SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-}
       AUTO_SEED: ${AUTO_SEED:-false}
     ports:
-      - "${PORT:-3010}:3010"
+      - "${BACKEND_PORT:-3010}:3010"
     volumes:
       - backend_uploads:/app/uploads
+    networks:
+      - internship_network
+
+  frontend:
+    build:
+      context: ../../Internship-Management-frontend
+      dockerfile: Dockerfile
+    container_name: internship_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
     networks:
       - internship_network
 
